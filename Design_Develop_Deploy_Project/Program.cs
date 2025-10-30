@@ -1,2 +1,46 @@
-﻿// See https://aka.ms/new-console-template for more information
-Console.WriteLine("Hello, World!");
+﻿using Design_Develop_Deploy_Project.Repos;
+using Design_Develop_Deploy_Project.Services;
+using Design_Develop_Deploy_Project.UI;
+using Design_Develop_Deploy_Project.Utilities;
+using System;
+class Program 
+{
+    static void Main(string[] args) 
+    {
+        string connectionString = "Data Source=Project_database.db;Version=3;";
+
+        var userRepo = new UserRepository(connectionString);
+        var validators = new Validators(userRepo);
+        var loginMenu = new LoginMenu(validators);
+
+        while (true) 
+        {
+            Console.Clear();
+
+            var user = loginMenu.ShowLoginScreen();
+
+            if (user == null) { continue; }
+
+            switch (user.role.ToLower()) 
+            {
+                case "student":
+                    var studentMenu = new StudentMenu(user, connectionString);
+                    studentMenu.ShowStudentMenu();
+                    break;
+                case "supervisor":
+                    var supervisorMenu = new SupervisorMenu(user, connectionString);
+                    supervisorMenu.ShowSupervisorMenu();
+                    break;
+                case "senior_tutor":
+                    var seniortutorMenu = new SeniortutorMenu(user, connectionString);
+                    seniortutorMenu.ShowSeniorTutorMenu();
+                    break;
+
+                default:
+                    Console.WriteLine("Unknown role, please double check login details!");
+                    break;
+            }
+
+        }
+    }
+}
