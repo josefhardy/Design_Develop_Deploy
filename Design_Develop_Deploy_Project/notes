@@ -44,7 +44,9 @@ REQUIRED FUNCTIONALITY:
 - 
 
 TO DO:
+- double check we have included all the functionality we planned for, all the extra stuff
 - add information on personas at the bottom of the console that is consistent throughout so that 
 when it is being marked they have information on objects being used
 - before starting report carefully look through labs and write up to see what needs to be included 
 - need to create helper functions, for now i have get int from user, get text from user, get y/n from user. all three are jus ideas have not been made yet 
+- get rid of senior tutor object, there is no need for it, doesnt own any unique data 
