@@ -295,10 +295,10 @@ public class MeetingRepository
 
             // 1️⃣ Get meetings already booked for this supervisor on the desired date
             string meetingsQuery = @"
-            SELECT start_time, end_time 
-            FROM Meetings
-            WHERE supervisor_id = @SupervisorId
-              AND meeting_date = @MeetingDate";
+        SELECT start_time, end_time 
+        FROM Meetings
+        WHERE supervisor_id = @SupervisorId
+          AND meeting_date = @MeetingDate";
 
             using (var cmd = new SQLiteCommand(meetingsQuery, conn))
             {
@@ -309,67 +309,65 @@ public class MeetingRepository
                 {
                     while (reader.Read())
                     {
-                        if (DateTime.TryParse(reader["start_time"]?.ToString(), out DateTime start) &&
-                            DateTime.TryParse(reader["end_time"]?.ToString(), out DateTime end))
+                        if (TimeSpan.TryParse(reader["start_time"]?.ToString(), out TimeSpan start) &&
+                            TimeSpan.TryParse(reader["end_time"]?.ToString(), out TimeSpan end))
                         {
-                            takenSlots.Add((start, end));
+                            var startDt = desiredDate.Date.Add(start);
+                            var endDt = desiredDate.Date.Add(end);
+                            takenSlots.Add((startDt, endDt));
                         }
                     }
                 }
             }
 
-            // 2️⃣ Get office hours for the supervisor
-            string officeHoursQuery = @"
-            SELECT office_hours 
-            FROM Supervisors
-            WHERE supervisor_id = @SupervisorId";
+            // 2️⃣ Get supervisor office hours (e.g. "Monday 09:00-11:00; Thursday 11:00-13:00")
             string officeHoursString;
-
-            using (var cmd = new SQLiteCommand(officeHoursQuery, conn))
+            using (var cmd = new SQLiteCommand("SELECT office_hours FROM Supervisors WHERE supervisor_id = @SupervisorId", conn))
             {
                 cmd.Parameters.AddWithValue("@SupervisorId", supervisorId);
                 officeHoursString = cmd.ExecuteScalar()?.ToString();
             }
 
             if (string.IsNullOrWhiteSpace(officeHoursString))
-                return new List<(DateTime start, DateTime end)>();
+                return availableSlots;
 
-            // Example office_hours format: "09:00-12:00,13:00-17:00"
-            var officeHourRanges = officeHoursString.Split(',')
-                .Select(slot =>
-                {
-                    var times = slot.Split('-');
-                    DateTime start = DateTime.ParseExact(times[0], "HH:mm", null);
-                    DateTime end = DateTime.ParseExact(times[1], "HH:mm", null);
+            // 3️⃣ Match the desiredDate day with one of the supervisor’s office-hour days
+            var sessions = officeHoursString.Split(';', StringSplitOptions.RemoveEmptyEntries)
+                                            .Select(s => s.Trim());
 
-                    start = new DateTime(desiredDate.Year, desiredDate.Month, desiredDate.Day, start.Hour, start.Minute, 0);
-                    end = new DateTime(desiredDate.Year, desiredDate.Month, desiredDate.Day, end.Hour, end.Minute, 0);
-                    return (start, end);
-                }).ToList();
-
-            // 3️⃣ Calculate available windows by subtracting booked meetings from office hours
-            foreach (var officeSlot in officeHourRanges)
+            foreach (var session in sessions)
             {
-                DateTime currentStart = officeSlot.start;
+                var parts = session.Split(' ');
+                if (parts.Length != 2) continue;
 
-                foreach (var booked in takenSlots
-                    .Where(b => b.start < officeSlot.end && b.end > officeSlot.start)
-                    .OrderBy(b => b.start))
+                string dayName = parts[0];
+                if (!dayName.Equals(desiredDate.DayOfWeek.ToString(), StringComparison.OrdinalIgnoreCase))
+                    continue; // skip sessions for other days
+
+                var times = parts[1].Split('-');
+                if (times.Length != 2) continue;
+
+                var start = TimeSpan.Parse(times[0]);
+                var end = TimeSpan.Parse(times[1]);
+
+                // 4️⃣ Generate 30-minute slots within this 2-hour window
+                for (var t = start; t < end; t = t.Add(TimeSpan.FromMinutes(30)))
                 {
-                    if (currentStart < booked.start)
-                        availableSlots.Add((currentStart, booked.start));
+                    var slotStart = desiredDate.Date.Add(t);
+                    var slotEnd = desiredDate.Date.Add(t.Add(TimeSpan.FromMinutes(30)));
 
-                    currentStart = booked.end > currentStart ? booked.end : currentStart;
+                    // Check if slot conflicts with booked meetings
+                    bool isTaken = takenSlots.Any(b =>
+                        (slotStart < b.end) && (slotEnd > b.start));
+
+                    if (!isTaken)
+                        availableSlots.Add((slotStart, slotEnd));
                 }
-
-                if (currentStart < officeSlot.end)
-                    availableSlots.Add((currentStart, officeSlot.end));
             }
         }
 
         return availableSlots;
     }
-
 
     private Meeting MapReaderToMeeting(SQLiteDataReader reader)
     {
@@ -424,6 +422,44 @@ public class MeetingRepository
 
         return ranges;
     }
+    public List<Meeting> GetMeetingsBySupervisorId(int supervisor_id)
+    {
+        var meetings = new List<Meeting>();
+
+        try
+        {
+            using (var conn = new SQLiteConnection(_connectionString))
+            {
+                conn.Open();
+                string query = @"
+                SELECT * 
+                FROM Meetings 
+                WHERE supervisor_id = @SupervisorId
+                ORDER BY meeting_date ASC, start_time ASC";
+
+                using (var cmd = new SQLiteCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@SupervisorId", supervisor_id);
+
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read()) 
+                        {
+                            meetings.Add(MapReaderToMeeting(reader));
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error retrieving meetings for supervisor: {ex.Message}");
+        }
+
+        return meetings;
+    }
+
+
 
 
 
