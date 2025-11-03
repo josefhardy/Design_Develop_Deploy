@@ -67,5 +67,29 @@ namespace Design_Develop_Deploy_Project.Utilities
                 Console.Clear();
             }
         }
+
+        public static bool GetYesOrNo(string prompt)
+        {
+            while (true)
+            {
+                Console.Write($"{prompt} (y/n): ");
+                string input = Console.ReadLine()?.Trim().ToLower();
+
+                if (input == "y" || input == "yes")
+                    return true;
+                if (input == "n" || input == "no")
+                    return false;
+
+                Console.WriteLine("Invalid input. Please enter 'y' or 'n'.");
+            }
+        }
+
+        public static string AskForInput(string prompt)
+        {
+            Console.Write($"{prompt}: ");
+            string input = Console.ReadLine()?.Trim();
+            return input ?? string.Empty;
+        }
+
     }
 }

@@ -4,25 +4,26 @@ using Design_Develop_Deploy_Project.Repos;
 using Design_Develop_Deploy_Project.Utilities;
 using Design_Develop_Deploy_Project.Services;
 using System;
+using System.Runtime.CompilerServices;
 
 namespace Design_Develop_Deploy_Project.UI;
 
 public class StudentMenu
 {
+    private readonly string _connectionString;
 	private readonly StudentRepository studentRepo;
-	private readonly StatusRepository statusRepo;
-	private readonly MeetingRepository meetingRepo;
 	private readonly Student student;
 	public StudentMenu(User user, string connectionString)
 	{
+        _connectionString = connectionString;
         studentRepo = new StudentRepository(connectionString);
-        statusRepo = new StatusRepository(connectionString);
-        meetingRepo = new MeetingRepository(connectionString);
         student = studentRepo.GetStudentByEmail(user.email);
     }
 
 	public void ShowStudentMenu() 
 	{
+        var studentService = new StudentService(_connectionString, student);
+
         if ((DateTime.UtcNow - student.last_status_update.Value).TotalDays > 7) 
         {
             Console.WriteLine($"{student.first_name} it has been more than a week since your last status update, please let us know hopw you're feeling");
@@ -47,19 +48,19 @@ public class StudentMenu
             switch (choice)
             {
                 case 1:
-                    StudentService.ViewStatus(student);
+                    studentService.ViewStatus();
                     ConsoleHelper.Pause();
                     break;
                 case 2:
-                    StudentService.UpdateStatus(student);
+                    studentService.UpdateStatus();
                     ConsoleHelper.Pause();
                     break;
                 case 3:
-                    StudentService.BookMeeting(student);
+                    studentService.BookMeeting();
                     ConsoleHelper.Pause();
                     break;
                 case 4:
-                    StudentService.ViewMeetings(student);
+                    studentService.ViewMeetings();
                     ConsoleHelper.Pause();
                     break;
                 case 5:
