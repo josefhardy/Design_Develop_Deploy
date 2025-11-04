@@ -295,10 +295,10 @@ public class MeetingRepository
 
             // 1️⃣ Get meetings already booked for this supervisor on the desired date
             string meetingsQuery = @"
-        SELECT start_time, end_time 
-        FROM Meetings
-        WHERE supervisor_id = @SupervisorId
-          AND meeting_date = @MeetingDate";
+                                    SELECT start_time, end_time 
+                                    FROM Meetings
+                                    WHERE supervisor_id = @SupervisorId
+                                    AND meeting_date = @MeetingDate";
 
             using (var cmd = new SQLiteCommand(meetingsQuery, conn))
             {
@@ -320,7 +320,7 @@ public class MeetingRepository
                 }
             }
 
-            // 2️⃣ Get supervisor office hours (e.g. "Monday 09:00-11:00; Thursday 11:00-13:00")
+            //Get supervisor office hours (e.g. "Monday 09:00-11:00; Thursday 11:00-13:00")
             string officeHoursString;
             using (var cmd = new SQLiteCommand("SELECT office_hours FROM Supervisors WHERE supervisor_id = @SupervisorId", conn))
             {
@@ -331,7 +331,7 @@ public class MeetingRepository
             if (string.IsNullOrWhiteSpace(officeHoursString))
                 return availableSlots;
 
-            // 3️⃣ Match the desiredDate day with one of the supervisor’s office-hour days
+            //Match the desiredDate day with one of the supervisor’s office-hour days
             var sessions = officeHoursString.Split(';', StringSplitOptions.RemoveEmptyEntries)
                                             .Select(s => s.Trim());
 
@@ -350,13 +350,13 @@ public class MeetingRepository
                 var start = TimeSpan.Parse(times[0]);
                 var end = TimeSpan.Parse(times[1]);
 
-                // 4️⃣ Generate 30-minute slots within this 2-hour window
+                //Generate 30-minute slots within this 2-hour window
                 for (var t = start; t < end; t = t.Add(TimeSpan.FromMinutes(30)))
                 {
                     var slotStart = desiredDate.Date.Add(t);
                     var slotEnd = desiredDate.Date.Add(t.Add(TimeSpan.FromMinutes(30)));
 
-                    // Check if slot conflicts with booked meetings
+                    //Check if slot conflicts with booked meetings
                     bool isTaken = takenSlots.Any(b =>
                         (slotStart < b.end) && (slotEnd > b.start));
 

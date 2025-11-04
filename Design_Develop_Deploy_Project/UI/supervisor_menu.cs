@@ -3,19 +3,23 @@ using Design_Develop_Deploy_Project.Repos;
 using Design_Develop_Deploy_Project.Objects;
 using Design_Develop_Deploy_Project.Utilities;
 using Design_Develop_Deploy_Project.Services;
+using System.Runtime.CompilerServices;
 
 namespace Design_Develop_Deploy_Project.UI;
 
 public class SupervisorMenu
 {
-	private readonly SupervisorRepository supervisorRepo;
+    private readonly string _connectionString;
+
+    private readonly SupervisorRepository supervisorRepo;
 	private readonly UserRepository userRepo;
 	private readonly Supervisor supervisor;
 	private readonly MeetingRepository meetingRepo;
 
 	public SupervisorMenu(User user, string connectionstring)
 	{
-		supervisorRepo = new SupervisorRepository(connectionstring);
+        _connectionString = connectionstring;
+        supervisorRepo = new SupervisorRepository(connectionstring);
 		userRepo = new UserRepository(connectionstring);
 		meetingRepo = new MeetingRepository(connectionstring);
 		supervisor = supervisorRepo.GetSupervisorByEmail(user.email);
@@ -23,7 +27,9 @@ public class SupervisorMenu
 
 	public void ShowSupervisorMenu()
 	{
-		bool update_office_hours, update_well_being_check;
+        var supervisorService = new SupervisorService(_connectionString, supervisor);
+
+        bool update_office_hours, update_well_being_check;
 
         bool updateOfficeHours = false;
         bool updateWellbeingCheck = false;
@@ -71,31 +77,31 @@ public class SupervisorMenu
             switch(choice)
             {
                 case 1:
-                    SupervisorService.ViewAllStudents(supervisor);
+                    supervisorService.ViewAllStudents();
                     ConsoleHelper.Pause();
                     break;
                 case 2:
-                    SupervisorService.ViewSpecificStudent(supervisor);
+                    supervisorService.ViewStudentDetails();
                     ConsoleHelper.Pause();
                     break;
                 case 3:
-                    SupervisorService.ViewInactiveStudents(supervisor);
+                    supervisorService.ViewInactiveStudents();
                     ConsoleHelper.Pause();
                     break;
                 case 4:
-                    SupervisorService.BookMeetingWithStudent(supervisor);
+                    supervisorService.BookMeeting();
                     ConsoleHelper.Pause();
                     break;
                 case 5:
-                    SupervisorService.ViewMeetings(supervisor);
+                    supervisorService.ViewMeetings();
                     ConsoleHelper.Pause();
                     break;
                 case 6:
-                    SupervisorService.UpdateOfficeHours(supervisor);
+                    supervisorService.UpdateOfficeHours();
                     ConsoleHelper.Pause();
                     break;
                 case 7:
-                    SupervisorService.ViewPerformanceMetrics(supervisor);
+                    supervisorService.ViewPerformanceMetrics();
                     ConsoleHelper.Pause();
                     break;
                 case 8:
