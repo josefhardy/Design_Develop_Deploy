@@ -28,11 +28,16 @@ class Program
                     studentMenu.ShowStudentMenu();
                     break;
                 case "supervisor":
-                    var supervisorMenu = new SupervisorMenu(user, connectionString);
-                    supervisorMenu.ShowSupervisorMenu();
-                    break;
+                    {
+                        var supervisorRepo = new SupervisorRepository(connectionString);
+                        supervisorRepo.ResetMonthlyInteractionStats();
+                        var supervisorMenu = new SupervisorMenu(user, connectionString);
+                        supervisorMenu.ShowSupervisorMenu();
+                        break;
+                    }
+
                 case "senior_tutor":
-                    var seniortutorMenu = new SeniortutorMenu(user, connectionString);
+                    var seniortutorMenu = new SeniorTutorMenu(user, connectionString);
                     seniortutorMenu.ShowSeniorTutorMenu();
                     break;
 

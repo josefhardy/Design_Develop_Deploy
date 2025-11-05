@@ -77,7 +77,7 @@ public class StudentService
             return;
         }
 
-        _studentRepo.UpdateStudentWellbeing(student.student_id, new_score_int);
+        _statusRepo.UpdateStudentWellbeing(student.student_id, new_score_int);
 
         Console.WriteLine("\nWellbeing status updated successfully!");
         Console.WriteLine("Returning to menu...");

@@ -45,6 +45,7 @@ namespace Design_Develop_Deploy_Project.Tables
                         office_hours TEXT,
                         meetings_booked_this_month INTEGER DEFAULT 0,
                         wellbeing_checks_this_month INTEGER DEFAULT 0,
+                        last_meeting_update_month INTEGER DEFAULT 0,
                         FOREIGN KEY (user_id) REFERENCES Users (user_id)
                     );
 

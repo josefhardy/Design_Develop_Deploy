@@ -70,10 +70,9 @@ public class SupervisorRepository
         }
     }
 
-    public (int meetings_booked, int wellbeing_checks) GetSupervisorActivity(int supervisorId)
+    public List<Supervisor> GetAllSupervisors()
     {
-        if (supervisorId <= 0)
-            return (0, 0);
+        var supervisors = new List<Supervisor>();
 
         try
         {
@@ -82,34 +81,28 @@ public class SupervisorRepository
                 conn.Open();
 
                 string query = @"
-                SELECT meetings_booked_last_month, wellbeing_checks_last_month
-                FROM Supervisors
-                WHERE supervisor_id = @SupervisorId";
+                SELECT supervisor_id, user_id, last_office_hours_update, 
+                       last_wellbeing_check, office_hours, 
+                       meetings_booked_this_month, wellbeing_checks_this_month
+                FROM Supervisors";
 
                 using (var cmd = new SQLiteCommand(query, conn))
+                using (var reader = cmd.ExecuteReader())
                 {
-                    cmd.Parameters.AddWithValue("@SupervisorId", supervisorId);
-
-                    using (var reader = cmd.ExecuteReader())
+                    while (reader.Read())
                     {
-                        if (reader.Read())
-                        {
-                            int meetings = reader.IsDBNull(0) ? 0 : reader.GetInt32(0);
-                            int checks = reader.IsDBNull(1) ? 0 : reader.GetInt32(1);
-                            return (meetings, checks);
-                        }
+                        supervisors.Add(MapReaderToSupervisor(reader));
                     }
                 }
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Database error in GetSupervisorActivity: {ex.Message}");
+            Console.WriteLine($"Error retrieving supervisors: {ex.Message}");
         }
 
-        return (0, 0);
+        return supervisors;
     }
-
 
     public void UpdateOfficeHours(int supervisorId, string officeHours)
     {
@@ -153,6 +146,65 @@ public class SupervisorRepository
         }
     }
 
+    public bool NeedsWellbeingCheckUpdate(int supervisorId)
+    {
+        using (var conn = new SQLiteConnection(_connectionString))
+        {
+            conn.Open();
+            string query = "SELECT last_wellbeing_check FROM Supervisors WHERE supervisor_id = @SupervisorId";
+            using (var cmd = new SQLiteCommand(query, conn))
+            {
+                cmd.Parameters.AddWithValue("@SupervisorId", supervisorId);
+                var result = cmd.ExecuteScalar();
+
+                if (result == null) return true;
+
+                DateTime lastUpdate = Convert.ToDateTime(result);
+                return (DateTime.UtcNow - lastUpdate).TotalDays > 7;
+            }
+        }
+    }
+
+    public void ResetMonthlyInteractionStats()
+    {
+        using (var conn = new SQLiteConnection(_connectionString))
+        {
+            conn.Open();
+
+            string query = @"
+            UPDATE Supervisors
+            SET 
+                meetings_booked_last_month = 0,
+                wellbeing_checks_last_month = 0,
+                last_meeting_update_month = strftime('%m', 'now')
+            WHERE last_meeting_update_month != strftime('%m', 'now');";
+
+            using (var cmd = new SQLiteCommand(query, conn))
+            {
+                cmd.ExecuteNonQuery();
+            }
+        }
+    }
+
+    public void IncrementWellbeingCheck(int supervisorId)
+    {
+        using (var conn = new SQLiteConnection(_connectionString))
+        {
+            conn.Open();
+
+            string incrementQuery = @"
+        UPDATE Supervisors
+        SET wellbeing_checks_this_month = wellbeing_checks_this_month + 1,
+            last_wellbeing_check = CURRENT_DATE
+        WHERE supervisor_id = @SupervisorId";
+
+            using (var cmd = new SQLiteCommand(incrementQuery, conn))
+            {
+                cmd.Parameters.AddWithValue("@SupervisorId", supervisorId);
+                cmd.ExecuteNonQuery();
+            }
+        }
+    }
 
     private Supervisor MapReaderToSupervisor(SQLiteDataReader reader)
     {

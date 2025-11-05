@@ -8,10 +8,12 @@ namespace Design_Develop_Deploy_Project.Repos;
 public class MeetingRepository
 {
 	public string _connectionString { get; set; }
+    private readonly SupervisorRepository _supervisorRepo;
 
     public MeetingRepository(string connectionString)
 	{
 		_connectionString = connectionString;
+        _supervisorRepo = new SupervisorRepository(connectionString);
     }
 
 	public MeetingRepository() { }
@@ -32,13 +34,12 @@ public class MeetingRepository
             {
                 conn.Open();
 
-                // 1. Check for conflicts
                 string conflictQuery = @"
-                SELECT COUNT(*) 
-                FROM Meetings
-                WHERE supervisor_id = @SupervisorId
-                  AND meeting_date = @MeetingDate
-                  AND ((@StartTime < end_time AND @EndTime > start_time))";
+            SELECT COUNT(*) 
+            FROM Meetings
+            WHERE supervisor_id = @SupervisorId
+              AND meeting_date = @MeetingDate
+              AND ((@StartTime < end_time AND @EndTime > start_time))";
 
                 using (var cmd = new SQLiteCommand(conflictQuery, conn))
                 {
@@ -55,10 +56,9 @@ public class MeetingRepository
                     }
                 }
 
-                // 2. Insert the meeting
                 string insertQuery = @"
-                INSERT INTO Meetings (student_id, supervisor_id, meeting_date, start_time, end_time, notes)
-                VALUES (@StudentId, @SupervisorId, @MeetingDate, @StartTime, @EndTime, @Notes)";
+            INSERT INTO Meetings (student_id, supervisor_id, meeting_date, start_time, end_time, notes)
+            VALUES (@StudentId, @SupervisorId, @MeetingDate, @StartTime, @EndTime, @Notes)";
 
                 using (var cmd = new SQLiteCommand(insertQuery, conn))
                 {
@@ -68,15 +68,13 @@ public class MeetingRepository
                     cmd.Parameters.AddWithValue("@StartTime", meeting.start_time);
                     cmd.Parameters.AddWithValue("@EndTime", meeting.end_time);
                     cmd.Parameters.AddWithValue("@Notes", meeting.notes ?? "");
-
                     cmd.ExecuteNonQuery();
                 }
 
-                // Optionally, update supervisor's meetings booked count
                 string updateSupervisorQuery = @"
-                UPDATE Supervisors
-                SET meetings_booked_last_month = meetings_booked_last_month + 1
-                WHERE supervisor_id = @SupervisorId";
+            UPDATE Supervisors
+            SET meetings_booked_this_month = meetings_booked_this_month + 1
+            WHERE supervisor_id = @SupervisorId";
 
                 using (var cmd = new SQLiteCommand(updateSupervisorQuery, conn))
                 {
@@ -93,6 +91,7 @@ public class MeetingRepository
             return false;
         }
     }
+
 
     public Meeting GetMeetingById(int meetingId) 
 	{

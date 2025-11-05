@@ -11,8 +11,8 @@ public class Supervisor : User
     public string office_hours { get; set; }
     public DateTime? last_office_hours_update { get; set; }
     public DateTime? last_wellbeing_check { get; set; }
-    public int meetings_booked_last_month { get; set; }
-    public int wellbeing_checks_last_month { get; set; }
+    public int meetings_booked_this_month { get; set; }
+    public int wellbeing_checks_this_month { get; set; }
 
     // Constructors
     public Supervisor() { }
@@ -37,7 +37,7 @@ public class Supervisor : User
         office_hours = officeHours;
         last_office_hours_update = lastOfficeHoursUpdate;
         last_wellbeing_check = lastWellbeingCheck;
-        meetings_booked_last_month = meetingsBookedLastMonth;
-        wellbeing_checks_last_month = wellbeingChecksLastMonth;
+        meetings_booked_this_month = meetingsBookedLastMonth;
+        wellbeing_checks_this_month = wellbeingChecksLastMonth;
     }
 }

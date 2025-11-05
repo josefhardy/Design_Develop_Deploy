@@ -9,6 +9,7 @@ using System.Security.Cryptography.X509Certificates;
 namespace Design_Develop_Deploy_Project.UI;
 public class SeniorTutorMenu
 {
+    private readonly string _connectionString;
     private readonly MeetingRepository meetingRepo;
     private readonly StudentRepository studentRepo;
     private readonly StatusRepository statusRepo;
@@ -16,6 +17,7 @@ public class SeniorTutorMenu
     private readonly User user;
     public SeniorTutorMenu(User user, string connectionString)
 	{
+        _connectionString = connectionString;
         meetingRepo = new MeetingRepository(connectionString);
         studentRepo = new StudentRepository(connectionString);
         statusRepo = new StatusRepository(connectionString);
@@ -25,14 +27,14 @@ public class SeniorTutorMenu
 
     public void ShowSeniorTutorMenu() 
     {
+        var tutorService = new TutorService(_connectionString);
         bool exit = false;
         while (!exit) {
             var menuItems = new List<string>
             {
                 "View all students",
                 "View all supervisors",
-                "View Supervisor performance",
-                "View at risk students",
+                "View students by wellbeing score",
                 "Logout"
             };
 
@@ -43,19 +45,15 @@ public class SeniorTutorMenu
             switch (choice)
             {
                 case 1:
-                    tutorService.ViewAllStudents(user);
+                    tutorService.ViewAllStudents();
                     ConsoleHelper.Pause();
                     break;
                 case 2:
-                    tutorService.ViewAllSupervisors(user);
+                    tutorService.ViewAllSupervisors();
                     ConsoleHelper.Pause();
                     break;
                 case 3:
-                    tutorService.ViewSupervisorPerformance(user);
-                    ConsoleHelper.Pause();
-                    break;
-                case 4:
-                    tutorService.ViewAtRiskStudents(user);
+                    tutorService.ViewStudentsByWellBeingScore();
                     ConsoleHelper.Pause();
                     break;
                 case 5:
