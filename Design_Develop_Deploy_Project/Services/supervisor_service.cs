@@ -1,5 +1,5 @@
 ﻿
-using Design.Develop.Deploy.Repos;
+using Design_Develop_Deploy_Project.Services;
 using Design_Develop_Deploy_Project.Objects;
 using Design_Develop_Deploy_Project.Repos;
 using Design_Develop_Deploy_Project.Utilities;
@@ -85,11 +85,16 @@ public class SupervisorService
         }
     }
 
-
     public void BookMeeting(Student student = null)
     {
         Console.Clear();
 
+        // ✅ new: create scheduler service to handle logic
+        var scheduler = new MeetingScheduler(_meetingRepo, _supervisorRepo);
+
+        // -----------------------------
+        // Step 1 – Choose student
+        // -----------------------------
         if (student == null)
         {
             var students = _studentRepo.GetAllStudentsUnderSpecificSupervisor(supervisor.supervisor_id);
@@ -104,6 +109,9 @@ public class SupervisorService
         Console.WriteLine($"\nBooking meeting with {student.first_name} {student.last_name} (ID: {student.student_id})");
         Console.WriteLine("======================================");
 
+        // -----------------------------
+        // Step 2 – Get available slots
+        // -----------------------------
         var availableSlots = new List<(DateTime start, DateTime end)>();
 
         for (int i = 0; i < 14; i++)
@@ -112,7 +120,8 @@ public class SupervisorService
             if (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday)
                 continue;
 
-            var slotsForThatDay = _meetingRepo.FetchAvailableSlots(supervisor.supervisor_id, date);
+            // ✅ new: use scheduler to fetch available slots
+            var slotsForThatDay = scheduler.FetchAvailableSlots(supervisor.supervisor_id, date);
             availableSlots.AddRange(slotsForThatDay);
         }
 
@@ -125,6 +134,9 @@ public class SupervisorService
             return;
         }
 
+        // -----------------------------
+        // Step 3 – Let supervisor choose a slot
+        // -----------------------------
         var slotStrings = availableSlots
             .Select(s => $"{s.start:ddd dd MMM HH:mm} – {s.end:HH:mm}")
             .ToList();
@@ -149,6 +161,9 @@ public class SupervisorService
             return;
         }
 
+        // -----------------------------
+        // Step 4 – Create meeting object
+        // -----------------------------
         var meeting = new Meeting
         {
             student_id = student.student_id,
@@ -159,11 +174,24 @@ public class SupervisorService
             notes = notes
         };
 
+        // -----------------------------
+        // Step 5 – Validate before saving
+        // -----------------------------
+        if (!scheduler.ValidateMeeting(meeting, out string validationMessage))
+        {
+            ConsoleHelper.PrintSection("❌ Invalid Meeting", validationMessage);
+            ConsoleHelper.Pause();
+            return;
+        }
+
+        // -----------------------------
+        // Step 6 – Save meeting
+        // -----------------------------
         bool success = _meetingRepo.AddMeeting(meeting);
 
         if (success)
         {
-            // ✅ NEW: Log this interaction for monthly tracking
+            // Log interaction for metrics
             _interactionRepo.RecordSupervisorInteraction(supervisor.supervisor_id, student.student_id, "meeting");
 
             ConsoleHelper.PrintSection("✅ Success",
@@ -171,12 +199,13 @@ public class SupervisorService
         }
         else
         {
-            ConsoleHelper.PrintSection("❌ Error", "Could not book the meeting. It may have been taken or an error occurred.");
+            ConsoleHelper.PrintSection("❌ Error",
+                "Could not book the meeting. It may have been taken or an error occurred.");
         }
 
         ConsoleHelper.Pause();
     }
-
+          
     public void ViewMeetings()
     {
         Console.Clear();

@@ -87,102 +87,81 @@ public class StudentService
     public void BookMeeting()
     {
         Console.Clear();
-        Console.WriteLine("=========== Book a Meeting ===========");
-        Console.WriteLine($"Student: {student.first_name} {student.last_name}");
-        Console.WriteLine($"Supervisor: {_supervisorRepo.GetSupervisorById(student.supervisor_id).first_name} {_supervisorRepo.GetSupervisorById(student.supervisor_id).last_name}");
-        Console.WriteLine("======================================\n");
+        var scheduler = new MeetingScheduler(_meetingRepo, _supervisorRepo);
 
-        int supervisorId = student.supervisor_id;
-        var supervisor = _supervisorRepo.GetSupervisorById(supervisorId);
+        var supervisors = _supervisorRepo.GetAllSupervisors();
+        if (supervisors.Count == 0)
+        {
+            ConsoleHelper.PrintSection("No Supervisors", "No supervisors available for booking.");
+            ConsoleHelper.Pause();
+            return;
+        }
 
+        int supChoice = ConsoleHelper.PromptForChoice(
+            supervisors.Select(s => $"{s.first_name} {s.last_name}").ToList(),
+            "Select a supervisor:"
+        );
+
+        var selectedSupervisor = supervisors[supChoice - 1];
+
+        // 🔹 Get available slots via the new scheduler
         var availableSlots = new List<(DateTime start, DateTime end)>();
-
         for (int i = 0; i < 14; i++)
         {
             DateTime date = DateTime.Today.AddDays(i);
-            if (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday)
+            if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
                 continue;
 
-            var slotsForThatDay = _meetingRepo.FetchAvailableSlots(supervisorId, date);
-            availableSlots.AddRange(slotsForThatDay);
+            var slotsForDay = scheduler.FetchAvailableSlots(selectedSupervisor.supervisor_id, date);
+            availableSlots.AddRange(slotsForDay);
         }
-
-        availableSlots = availableSlots.OrderBy(s => s.start).ToList();
 
         if (availableSlots.Count == 0)
         {
-            Console.WriteLine("No available meeting slots with your supervisor in the next two weeks.");
-            Console.WriteLine("Returning to menu...");
-            Thread.Sleep(1500);
+            ConsoleHelper.PrintSection("No Available Slots", "No open slots in the next 2 weeks.");
+            ConsoleHelper.Pause();
             return;
         }
 
-        var slotStrings = new List<string>();
-        foreach (var slot in availableSlots)
-        {
-            slotStrings.Add($"{slot.start:ddd dd MMM HH:mm} – {slot.end:HH:mm}");
-        }
+        var slotOptions = availableSlots
+            .Select(s => $"{s.start:ddd dd MMM HH:mm} – {s.end:HH:mm}")
+            .ToList();
 
-        int choice = ConsoleHelper.PromptForChoice(slotStrings, "Available Meeting Slots (Next 2 Weeks)");
-        var selectedSlot = availableSlots[choice - 1];
+        int slotChoice = ConsoleHelper.PromptForChoice(slotOptions, "Choose a meeting slot:");
+        var chosenSlot = availableSlots[slotChoice - 1];
 
-        var existingMeeting = _meetingRepo.GetMeetingByVariable(
-            student_id: student.student_id,
-            meeting_date: selectedSlot.start.Date
-        );
-
-        if (existingMeeting != null &&
-            ((selectedSlot.start.TimeOfDay < existingMeeting.end_time) &&
-             (selectedSlot.end.TimeOfDay > existingMeeting.start_time)))
-        {
-            Console.WriteLine($"\nYou already have a meeting booked on {selectedSlot.start:dddd dd MMM} " +
-                              $"from {existingMeeting.start_time:hh\\:mm} to {existingMeeting.end_time:hh\\:mm}.");
-            Console.WriteLine("Please choose another slot.");
-            Thread.Sleep(1500);
-            return;
-        }
-
-        string note = ConsoleHelper.AskForInput("Add a note or reason for meeting (optional)");
-
-        Console.Clear();
-        Console.WriteLine("========== Meeting Confirmation ==========");
-        Console.WriteLine($"Date: {selectedSlot.start:dddd dd MMM}");
-        Console.WriteLine($"Time: {selectedSlot.start:HH:mm} – {selectedSlot.end:HH:mm}");
-        Console.WriteLine($"Supervisor: {supervisor.first_name} {supervisor.last_name}");
-        Console.WriteLine("==========================================\n");
-
-        bool confirm = ConsoleHelper.GetYesOrNo("Do you want to confirm this booking?");
-        if (!confirm)
-        {
-            Console.WriteLine("\nMeeting booking was cancelled.");
-            Console.WriteLine("Returning to menu...");
-            Thread.Sleep(1500);
-            return;
-        }
+        string notes = ConsoleHelper.AskForInput("Add meeting notes (optional)");
 
         var meeting = new Meeting
         {
             student_id = student.student_id,
-            supervisor_id = supervisorId,
-            meeting_date = selectedSlot.start.Date,
-            start_time = selectedSlot.start.TimeOfDay,
-            end_time = selectedSlot.end.TimeOfDay,
-            notes = note
+            supervisor_id = selectedSupervisor.supervisor_id,
+            meeting_date = chosenSlot.start.Date,
+            start_time = chosenSlot.start.TimeOfDay,
+            end_time = chosenSlot.end.TimeOfDay,
+            notes = notes
         };
 
-        bool success = _meetingRepo.AddMeeting(meeting);
+        // 🔹 Validate meeting before saving
+        if (!scheduler.ValidateMeeting(meeting, out string message))
+        {
+            ConsoleHelper.PrintSection("❌ Invalid Meeting", message);
+            ConsoleHelper.Pause();
+            return;
+        }
 
+        bool success = _meetingRepo.AddMeeting(meeting);
         if (success)
         {
-            Console.WriteLine($"\nMeeting booked for {selectedSlot.start:dddd dd MMM HH:mm} – {selectedSlot.end:HH:mm}");
+            ConsoleHelper.PrintSection("✅ Success", "Meeting booked successfully!");
+            _interactionRepo.RecordStudentInteraction(student.student_id, selectedSupervisor.supervisor_id, "meeting");
         }
         else
         {
-            Console.WriteLine("\nCould not book the meeting. It may have been taken or an error occurred.");
+            ConsoleHelper.PrintSection("❌ Error", "Failed to book the meeting.");
         }
 
-        Console.WriteLine("Returning to menu...");
-        Thread.Sleep(1500);
+        ConsoleHelper.Pause();
     }
 
     public void ViewMeetings()
