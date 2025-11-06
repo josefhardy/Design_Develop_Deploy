@@ -147,20 +147,18 @@ public class SupervisorRepository
         return result == DBNull.Value ? null : Convert.ToDateTime(result);
     }
 
-
-    public void ResetMonthlyInteractionStats()
+    public void ResetInteractionStats()
     {
         using (var conn = new SQLiteConnection(_connectionString))
         {
             conn.Open();
-
-            string query = @"
-            UPDATE Supervisors
-            SET 
-                meetings_booked_last_month = 0,
-                wellbeing_checks_last_month = 0,
-                last_meeting_update_month = strftime('%m', 'now')
-            WHERE last_meeting_update_month != strftime('%m', 'now');";
+            const string query = @"
+        UPDATE Supervisors
+        SET 
+            meetings_booked_last_month = 0,
+            wellbeing_checks_last_month = 0,
+            last_meeting_update_month = strftime('%m', 'now')
+        WHERE last_meeting_update_month != strftime('%m', 'now');";
 
             using (var cmd = new SQLiteCommand(query, conn))
             {
@@ -169,21 +167,21 @@ public class SupervisorRepository
         }
     }
 
-    public void IncrementWellbeingCheck(int supervisorId)
+    public void UpdateWellbeingCheckCount(int supervisorId, DateTime checkDate)
     {
         using (var conn = new SQLiteConnection(_connectionString))
         {
             conn.Open();
-
-            string incrementQuery = @"
+            const string query = @"
         UPDATE Supervisors
         SET wellbeing_checks_this_month = wellbeing_checks_this_month + 1,
-            last_wellbeing_check = CURRENT_DATE
+            last_wellbeing_check = @CheckDate
         WHERE supervisor_id = @SupervisorId";
 
-            using (var cmd = new SQLiteCommand(incrementQuery, conn))
+            using (var cmd = new SQLiteCommand(query, conn))
             {
                 cmd.Parameters.AddWithValue("@SupervisorId", supervisorId);
+                cmd.Parameters.AddWithValue("@CheckDate", checkDate);
                 cmd.ExecuteNonQuery();
             }
         }

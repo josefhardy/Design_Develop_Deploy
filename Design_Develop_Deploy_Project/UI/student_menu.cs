@@ -1,37 +1,38 @@
-﻿using Design.Develop.Deploy.Repos;
+﻿
 using Design_Develop_Deploy_Project.Objects;
 using Design_Develop_Deploy_Project.Repos;
 using Design_Develop_Deploy_Project.Utilities;
 using Design_Develop_Deploy_Project.Services;
 using System;
 using System.Runtime.CompilerServices;
+using System.Linq.Expressions;
 
 namespace Design_Develop_Deploy_Project.UI;
 
 public class StudentMenu
 {
     private readonly string _connectionString;
-	private readonly StudentRepository studentRepo;
-	private readonly Student student;
-	public StudentMenu(User user, string connectionString)
-	{
+    private readonly StudentRepository studentRepo;
+    private readonly Student student;
+    public StudentMenu(User user, string connectionString)
+    {
         _connectionString = connectionString;
         studentRepo = new StudentRepository(connectionString);
         student = studentRepo.GetStudentByEmail(user.email);
     }
 
-	public void ShowStudentMenu() 
-	{
+    public void ShowStudentMenu()
+    {
         var studentService = new StudentService(_connectionString, student);
 
-        if ((DateTime.UtcNow - student.last_status_update.Value).TotalDays > 7) 
+        if ((DateTime.UtcNow - student.last_status_update.Value).TotalDays > 7)
         {
             Console.WriteLine($"{student.first_name} it has been more than a week since your last status update, please let us know hopw you're feeling");
         }
-		bool exit = false;
+        bool exit = false;
 
-		while (!exit) 
-		{
+        while (!exit)
+        {
             var menuItems = new List<string>
         {
             "View wellbeing status",
@@ -42,34 +43,43 @@ public class StudentMenu
         };
 
             Console.Clear();
-			Console.WriteLine($"Welcome {student.first_name}!");
+            Console.WriteLine($"Welcome {student.first_name}!");
             int choice = ConsoleHelper.PromptForChoice(menuItems, "====== Student Menu ======");
 
-            switch (choice)
+            try
             {
-                case 1:
-                    studentService.ViewStatus();
-                    ConsoleHelper.Pause();
-                    break;
-                case 2:
-                    studentService.UpdateStatus();
-                    ConsoleHelper.Pause();
-                    break;
-                case 3:
-                    studentService.BookMeeting();
-                    ConsoleHelper.Pause();
-                    break;
-                case 4:
-                    studentService.ViewMeetings();
-                    ConsoleHelper.Pause();
-                    break;
-                case 5:
-                    exit = true;
-                    break;
-                default:
-                    Console.WriteLine("Invalid choice, please try again");
-                    break;
+                switch (choice)
+                {
+                    case 1:
+                        studentService.ViewStatus();
+                        ConsoleHelper.Pause();
+                        break;
+                    case 2:
+                        studentService.UpdateStatus();
+                        ConsoleHelper.Pause();
+                        break;
+                    case 3:
+                        studentService.BookMeeting();
+                        ConsoleHelper.Pause();
+                        break;
+                    case 4:
+                        studentService.ViewMeetings();
+                        ConsoleHelper.Pause();
+                        break;
+                    case 5:
+                        exit = true;
+                        break;
+                    default:
+                        Console.WriteLine("Invalid choice, please try again");
+                        break;
+                }
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred: {ex.Message}");
+                ConsoleHelper.Pause();
             }
         }
-	}
+    }
 }

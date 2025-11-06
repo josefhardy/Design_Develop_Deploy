@@ -14,15 +14,11 @@ public class InteractionRepository
         _connectionString = connectionString;
     }
 
-    // -----------------------------------------------------------
-    // 1️⃣ Record a Supervisor Interaction
-    // -----------------------------------------------------------
     public void RecordSupervisorInteraction(int supervisor_id, int student_id, string interaction_type)
     {
         if (supervisor_id <= 0 || student_id <= 0 || string.IsNullOrWhiteSpace(interaction_type))
         {
-            Console.WriteLine("Invalid parameters provided to RecordSupervisorInteraction.");
-            return;
+            throw new ArgumentException("Invalid parameters provided to RecordSupervisorInteraction.");
         }
 
         try
@@ -40,8 +36,7 @@ public class InteractionRepository
 
                 if (columnToUpdate == null)
                 {
-                    Console.WriteLine("Invalid interaction type.");
-                    return;
+                    throw new ArgumentException("Invalid interaction type.");
                 }
 
                 string updateQuery = $@"
@@ -58,19 +53,15 @@ public class InteractionRepository
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error recording supervisor interaction: {ex.Message}");
+            throw new Exception("Error recording supervisor interaction.", ex);
         }
     }
 
-    // -----------------------------------------------------------
-    // 2️⃣ Get Supervisor Activity (meetings + wellbeing checks)
-    // -----------------------------------------------------------
     public (int meetingsBooked, int wellbeingChecks) GetSupervisorActivity(int supervisor_id)
     {
         if (supervisor_id <= 0)
         {
-            Console.WriteLine("Invalid supervisor ID provided to GetSupervisorActivity.");
-            return (0, 0);
+            throw new ArgumentException("Invalid supervisor ID provided to GetSupervisorActivity.");
         }
 
         try
@@ -100,114 +91,12 @@ public class InteractionRepository
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error getting supervisor activity: {ex.Message}");
+            throw new Exception("Error getting supervisor activity.", ex);
         }
 
         return (0, 0);
     }
 
-    // -----------------------------------------------------------
-    // 3️⃣ Get All Meetings (Student Interactions)
-    // -----------------------------------------------------------
-    public List<Meeting> GetStudentInteractions(int student_id)
-    {
-        var meetings = new List<Meeting>();
-
-        if (student_id <= 0)
-        {
-            Console.WriteLine("Invalid student ID in GetStudentInteractions.");
-            return meetings;
-        }
-
-        try
-        {
-            using (var conn = new SQLiteConnection(_connectionString))
-            {
-                conn.Open();
-
-                string query = @"
-                    SELECT meeting_id, student_id, supervisor_id, meeting_date, start_time, end_time, notes
-                    FROM Meetings
-                    WHERE student_id = @StudentId
-                    ORDER BY meeting_date DESC";
-
-                using (var cmd = new SQLiteCommand(query, conn))
-                {
-                    cmd.Parameters.AddWithValue("@StudentId", student_id);
-                    using (var reader = cmd.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            meetings.Add(MapReaderToMeeting(reader));
-                        }
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error fetching student interactions: {ex.Message}");
-        }
-
-        return meetings;
-    }
-
-    // -----------------------------------------------------------
-    // 4️⃣ Get Student Interaction Count
-    // -----------------------------------------------------------
-    public int GetStudentInteractionCount(int student_id)
-    {
-        if (student_id <= 0)
-        {
-            Console.WriteLine("Invalid student ID in GetStudentInteractionCount.");
-            return 0;
-        }
-
-        try
-        {
-            int meetingCount = 0;
-            int wellbeingChecks = 0;
-
-            using (var conn = new SQLiteConnection(_connectionString))
-            {
-                conn.Open();
-
-                // Count meetings
-                string meetingQuery = "SELECT COUNT(*) FROM Meetings WHERE student_id = @StudentId";
-                using (var cmd = new SQLiteCommand(meetingQuery, conn))
-                {
-                    cmd.Parameters.AddWithValue("@StudentId", student_id);
-                    meetingCount = Convert.ToInt32(cmd.ExecuteScalar());
-                }
-
-                // Get supervisor wellbeing checks for the student
-                string wellbeingQuery = @"
-                    SELECT s.wellbeing_checks_last_month
-                    FROM Students st
-                    JOIN Supervisors s ON st.supervisor_id = s.supervisor_id
-                    WHERE st.student_id = @StudentId";
-
-                using (var cmd = new SQLiteCommand(wellbeingQuery, conn))
-                {
-                    cmd.Parameters.AddWithValue("@StudentId", student_id);
-                    var result = cmd.ExecuteScalar();
-                    if (result != null)
-                        wellbeingChecks = Convert.ToInt32(result);
-                }
-            }
-
-            return meetingCount + wellbeingChecks;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error getting student interaction count: {ex.Message}");
-            return 0;
-        }
-    }
-
-    // -----------------------------------------------------------
-    // 5️⃣ Get All Supervisor Interactions
-    // -----------------------------------------------------------
     public List<(Supervisor supervisor, int totalInteractions)> GetAllSupervisorInteractions()
     {
         var results = new List<(Supervisor, int)>();
@@ -250,15 +139,12 @@ public class InteractionRepository
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error getting all supervisor interactions: {ex.Message}");
+            throw new Exception("Error fetching all student interactions.", ex);
         }
 
         return results;
     }
 
-    // -----------------------------------------------------------
-    // 6️⃣ Get All Student Interactions (summary list)
-    // -----------------------------------------------------------
     public List<(Student student, int totalInteractions)> GetAllStudentInteractions()
     {
         var results = new List<(Student, int)>();
@@ -308,26 +194,63 @@ public class InteractionRepository
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error fetching all student interactions: {ex.Message}");
+            throw new Exception("Error retrieving student activity in range.", ex);
         }
 
         return results;
     }
 
-    // -----------------------------------------------------------
-    // Helper Mapper
-    // -----------------------------------------------------------
-    private Meeting MapReaderToMeeting(SQLiteDataReader reader)
+    public (int meetings, int wellbeingChecks) GetSupervisorActivityInRange(int supervisorId, DateTime start, DateTime end)
     {
-        return new Meeting
+        int meetings = 0;
+        int wellbeingChecks = 0;
+
+        try
         {
-            meeting_id = Convert.ToInt32(reader["meeting_id"]),
-            student_id = Convert.ToInt32(reader["student_id"]),
-            supervisor_id = Convert.ToInt32(reader["supervisor_id"]),
-            meeting_date = Convert.ToDateTime(reader["meeting_date"]),
-            start_time = TimeSpan.Parse(reader["start_time"].ToString()),
-            end_time = TimeSpan.Parse(reader["end_time"].ToString()),
-            notes = reader["notes"].ToString()
-        };
+            using (var conn = new SQLiteConnection(_connectionString))
+            {
+                conn.Open();
+
+                // ✅ Count meetings within the given date range
+                const string meetingQuery = @"
+                SELECT COUNT(*) 
+                FROM Meetings
+                WHERE supervisor_id = @SupervisorId
+                  AND meeting_date >= @StartDate
+                  AND meeting_date < @EndDate;";
+
+                using (var cmd = new SQLiteCommand(meetingQuery, conn))
+                {
+                    cmd.Parameters.AddWithValue("@SupervisorId", supervisorId);
+                    cmd.Parameters.AddWithValue("@StartDate", start);
+                    cmd.Parameters.AddWithValue("@EndDate", end);
+                    meetings = Convert.ToInt32(cmd.ExecuteScalar());
+                }
+
+                // ✅ Count wellbeing checks indirectly from Supervisors table
+                const string wellbeingQuery = @"
+                SELECT COUNT(*) 
+                FROM Supervisors
+                WHERE supervisor_id = @SupervisorId
+                  AND last_wellbeing_check >= @StartDate
+                  AND last_wellbeing_check < @EndDate;";
+
+                using (var cmd = new SQLiteCommand(wellbeingQuery, conn))
+                {
+                    cmd.Parameters.AddWithValue("@SupervisorId", supervisorId);
+                    cmd.Parameters.AddWithValue("@StartDate", start);
+                    cmd.Parameters.AddWithValue("@EndDate", end);
+                    wellbeingChecks = Convert.ToInt32(cmd.ExecuteScalar());
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            throw new Exception("Error retrieving supervisor activity in range.", ex);
+        }
+
+
+        return (meetings, wellbeingChecks);
     }
+
 }

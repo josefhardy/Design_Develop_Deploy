@@ -30,12 +30,14 @@ class Program
                 case "supervisor":
                     {
                         var supervisorRepo = new SupervisorRepository(connectionString);
-                        supervisorRepo.ResetMonthlyInteractionStats();
+                        var interactionRepo = new InteractionRepository(connectionString);
+                        var functionService = new SupervisorFunctionService(supervisorRepo, interactionRepo);
+                        functionService.ResetMonthlyInteractionStatsIfNeeded();
+
                         var supervisorMenu = new SupervisorMenu(user, connectionString);
                         supervisorMenu.ShowSupervisorMenu();
                         break;
                     }
-
                 case "senior_tutor":
                     var seniortutorMenu = new SeniorTutorMenu(user, connectionString);
                     seniortutorMenu.ShowSeniorTutorMenu();

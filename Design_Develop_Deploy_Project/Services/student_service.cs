@@ -1,4 +1,4 @@
-﻿using Design.Develop.Deploy.Repos;
+﻿
 using Design_Develop_Deploy_Project.Objects;
 using Design_Develop_Deploy_Project.Repos;
 using System;
@@ -154,7 +154,6 @@ public class StudentService
         if (success)
         {
             ConsoleHelper.PrintSection("✅ Success", "Meeting booked successfully!");
-            _interactionRepo.RecordStudentInteraction(student.student_id, selectedSupervisor.supervisor_id, "meeting");
         }
         else
         {

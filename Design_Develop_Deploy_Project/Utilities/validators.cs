@@ -12,25 +12,35 @@ public class Validators
 		userRepo = _userRepo;
 	}
 
-	public User ValidateLogin(string email, string password) 
-	{
-		User user = userRepo.GetUserByEmail(email);
-
-        if (user == null)
+    public User ValidateLogin(string email, string password)
+    {
+        try
         {
-			Console.WriteLine("Email does not exist in this context");
-			return null;
-        }
+            User user = userRepo.GetUserByEmail(email);
 
-		if (password == user.password)
-		{
-			Console.WriteLine("User login successful");
-			return user;
-		}
-		else 
-		{
-			Console.WriteLine("Incorrect password...");
-			return null;
-		}
+            if (user == null)
+            {
+                ConsoleHelper.PrintSection("⚠️  Login Failed", "Email does not exist in this system.");
+                return null;
+            }
+
+            if (password == user.password)
+            {
+                ConsoleHelper.PrintSection("✅ Success", "User login successful!");
+                return user;
+            }
+            else
+            {
+                ConsoleHelper.PrintSection("❌ Incorrect Password", "The password you entered is incorrect.");
+                return null;
+            }
+        }
+        catch (Exception ex)
+        {
+            ConsoleHelper.PrintSection("❌ Database Error", ex.Message);
+            ConsoleHelper.Pause("Press any key to return to login...");
+            return null;
+        }
     }
+
 }

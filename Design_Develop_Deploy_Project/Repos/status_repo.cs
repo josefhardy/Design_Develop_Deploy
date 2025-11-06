@@ -34,8 +34,7 @@ public class StatusRepository
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Database error in UpdateStudentWellbeing: {ex.Message}");
-            return false;
+            throw new Exception("Error updating wellbeing", ex);
         }
     }
 
@@ -70,84 +69,10 @@ public class StatusRepository
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Database error in GetAllStudentsByWellBeingScore: {ex.Message}");
+            throw new Exception("Error retrieving all students from database.", ex);
         }
+
         return students;
-    }
-
-    public List<Student> GetInactiveStudents(int days)
-    {
-        var students = new List<Student>();
-        try
-        {
-            using (var conn = new SQLiteConnection(_connectionString))
-            {
-                conn.Open();
-                string query = @"
-				SELECT s.student_id, s.supervisor_id, s.wellbeing_score, s.last_status_update,
-					   u.user_id, u.first_name, u.last_name, u.email, u.password, u.role
-				FROM Students s
-				JOIN Users u ON s.user_id = u.user_id
-				WHERE s.last_status_update <= @InactiveDate";
-                using (var cmd = new SQLiteCommand(query, conn))
-                {
-                    cmd.Parameters.AddWithValue("@InactiveDate", DateTime.UtcNow.AddDays(-days));
-                    using (var reader = cmd.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            var student = MapReaderToStudent(reader);
-                            students.Add(student);
-                        }
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Database error in GetInactiveStudents: {ex.Message}");
-            return new List<Student>();
-        }
-        return students;
-    }
-
-    public int? GetStudentStatus(int student_id) 
-    {
-        if (student_id <= 0) 
-        {
-            Console.WriteLine("Invalid student_id provided to GetStudentStatus.");
-            return null;
-        }
-
-        try 
-        {
-            using (var conn = new SQLiteConnection(_connectionString)) 
-            {
-                conn.Open();
-                string query = @"
-                SELECT wellbeing_score
-                FROM Students
-                WHERE student_id = @StudentId";
-                using (var cmd = new SQLiteCommand(query, conn)) 
-                {
-                    cmd.Parameters.AddWithValue("@StudentId", student_id);
-                    var result = cmd.ExecuteScalar();
-                    if (result != null) 
-                    {
-                        return Convert.ToInt32(result);
-                    } 
-                    else 
-                    {
-                        return null;
-                    }
-                }
-            }
-        } 
-        catch (Exception ex) 
-        {
-            Console.WriteLine($"Database error in GetStudentStatus: {ex.Message}");
-            return null;
-        }
     }
 
     private Student MapReaderToStudent(SQLiteDataReader reader)

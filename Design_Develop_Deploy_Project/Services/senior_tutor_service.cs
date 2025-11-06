@@ -9,13 +9,15 @@ public class TutorService
 {
 	private readonly StudentRepository studentRepo;
 	private readonly SupervisorRepository supervisorRepo;
-    readonly InteractionRepository _interactionRepo;
+    private readonly InteractionRepository _interactionRepo;
+    private readonly StatusRepository statusRepo;
 
     public TutorService(string connectionString)
 	{
 		studentRepo = new StudentRepository(connectionString);
 		supervisorRepo = new SupervisorRepository(connectionString);
         _interactionRepo = new InteractionRepository(connectionString);
+        statusRepo = new StatusRepository(connectionString);
     }
 
     public void ViewAllStudents()
@@ -45,8 +47,6 @@ public class TutorService
 
         ConsoleHelper.Pause("Press any key to return to the menu...");
     }
-
-
 
     public void ViewAllSupervisors()
     {
@@ -84,7 +84,6 @@ public class TutorService
         ConsoleHelper.Pause("Press any key to return to the menu...");
     }
 
-
     public void ViewStudentsByWellBeingScore()
     {
         Console.Clear();
@@ -117,7 +116,7 @@ public class TutorService
             }
         }
 
-        var students = studentRepo.GetAllStudentsByWellBeingScore(minScore, maxScore);
+        var students = statusRepo.GetAllStudentsByWellBeingScore(minScore, maxScore);
 
         Console.Clear();
         Console.WriteLine($"=========== Students with Wellbeing Score {minScore}–{maxScore} ===========\n");

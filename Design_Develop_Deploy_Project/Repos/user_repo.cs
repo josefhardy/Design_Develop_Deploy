@@ -2,136 +2,61 @@
 using System.Data.SQLite;
 using Design_Develop_Deploy_Project.Objects;
 
-namespace Design_Develop_Deploy_Project.Repos;
-
-public class UserRepository
+namespace Design_Develop_Deploy_Project.Repos
 {
-    private string _connectionString;
-
-    public UserRepository(string connectionString)
+    public class UserRepository
     {
-        _connectionString = connectionString;
-    }
+        private readonly string _connectionString;
 
-    public bool AddUser(User user)
-    {
-        if (user == null)
-            return false;
-        try
+        public UserRepository(string connectionString)
         {
-            using (var conn = new SQLiteConnection(_connectionString)) 
-            {
-                conn.Open();
-
-                string query = "INSERT INTO Users (first_name, last_name, email, password, role) " +
-                               "VALUES (@FirstName, @LastName, @Email, @Password, @Role)";
-
-                using (var cmd = new SQLiteCommand(query, conn)) 
-                {
-                    cmd.Parameters.AddWithValue("@FirstName", user.first_name);
-                    cmd.Parameters.AddWithValue("@LastName", user.last_name);
-                    cmd.Parameters.AddWithValue("@Email", user.email.Trim().ToLower());
-                    cmd.Parameters.AddWithValue("@Password", user.password);
-                    cmd.Parameters.AddWithValue("@Role", user.role);
-
-                    int rowsAffected = cmd.ExecuteNonQuery();
-                    return rowsAffected > 0;
-                }
-            }    
+            _connectionString = connectionString;
         }
-        catch (Exception ex)
+
+        public User GetUserByEmail(string email)
         {
-            Console.WriteLine($"Database error in AddUser: {ex.Message}");
-            return false;
-        }
-    }
+            if (string.IsNullOrWhiteSpace(email))
+                return null;
 
-    public User GetUserByEmail(string email)
-    {
-        if (string.IsNullOrWhiteSpace(email))
-            return null;
+            // Normalize input (avoid case sensitivity or whitespace issues)
+            email = email.Trim().ToLower();
 
-        // Normalize input (avoid case sensitivity or whitespace issues)
-        email = email.Trim().ToLower();
-
-        try
-        {
-            using (var conn = new SQLiteConnection(_connectionString))
+            try
             {
-                conn.Open();
-                string query = "SELECT * FROM Users WHERE LOWER(email) = @Email";
-
-                using (var cmd = new SQLiteCommand(query, conn))
+                using (var conn = new SQLiteConnection(_connectionString))
                 {
-                    cmd.Parameters.AddWithValue("@Email", email);
+                    conn.Open();
+                    const string query = "SELECT * FROM Users WHERE LOWER(email) = @Email";
 
-                    using (var reader = cmd.ExecuteReader())
+                    using (var cmd = new SQLiteCommand(query, conn))
                     {
-                        if (reader.Read())
+                        cmd.Parameters.AddWithValue("@Email", email);
+
+                        using (var reader = cmd.ExecuteReader())
                         {
-                            return new User
+                            if (reader.Read())
                             {
-                                user_id = Convert.ToInt32(reader["user_id"]),
-                                first_name = reader["first_name"].ToString(),
-                                last_name = reader["last_name"].ToString(),
-                                email = reader["email"].ToString(),
-                                password = reader["password"].ToString(),
-                                role = reader["role"].ToString()
-                            };
+                                return new User
+                                {
+                                    user_id = Convert.ToInt32(reader["user_id"]),
+                                    first_name = reader["first_name"].ToString(),
+                                    last_name = reader["last_name"].ToString(),
+                                    email = reader["email"].ToString(),
+                                    password = reader["password"].ToString(),
+                                    role = reader["role"].ToString()
+                                };
+                            }
                         }
                     }
                 }
             }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Database error in GetUserByEmail: {ex.Message}");
-        }
-
-        return null;
-    }
-
-    public User GetUserById(int userId)
-    {
-        if (userId <= 0)
-            return null;
-
-        try
-        {
-            using (var conn = new SQLiteConnection(_connectionString))
+            catch (Exception ex)
             {
-                conn.Open();
-                string query = "SELECT * FROM Users WHERE user_id = @UserId";
-
-                using (var cmd = new SQLiteCommand(query, conn))
-                {
-                    cmd.Parameters.AddWithValue("@UserId", userId);
-
-                    using (var reader = cmd.ExecuteReader())
-                    {
-                        if (reader.Read())
-                        {
-                            return new User
-                            {
-                                user_id = Convert.ToInt32(reader["user_id"]),
-                                first_name = reader["first_name"].ToString(),
-                                last_name = reader["last_name"].ToString(),
-                                email = reader["email"].ToString(),
-                                password = reader["password"].ToString(),
-                                role = reader["role"].ToString()
-                            };
-                        }
-                    }
-                }
+                // Rethrow so upper layers (services/UI) handle the message.
+                throw new Exception("Error retrieving user by email.", ex);
             }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Database error in GetUserById: {ex.Message}");
-        }
 
-        return null;
+            return null;
+        }
     }
-
 }
-
