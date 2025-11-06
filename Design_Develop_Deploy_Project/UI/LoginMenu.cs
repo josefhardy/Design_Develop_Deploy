@@ -28,7 +28,7 @@ namespace Design_Develop_Deploy_Project.UI
             Console.Clear();
             Console.WriteLine("========== LOGIN ==========");
             Console.WriteLine("Please enter password");
-            string password = Console.ReadLine()?.Trim().ToLower();
+            string password = Console.ReadLine()?.Trim();
 
             var User = validators.ValidateLogin(email, password);
             return User;

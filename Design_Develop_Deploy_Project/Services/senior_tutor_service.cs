@@ -1,5 +1,4 @@
-﻿using Design.Develop.Deploy.Repos;
-using Design_Develop_Deploy_Project.Repos;
+﻿using Design_Develop_Deploy_Project.Repos;
 using Design_Develop_Deploy_Project.Utilities;
 using System;
 using System.ComponentModel.Design;

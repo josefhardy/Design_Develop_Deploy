@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Data.SQLite;
 
-namespace Design.Develop.Deploy.Repos;
+namespace Design_Develop_Deploy_Project;
 
 public class StudentRepository
 {
