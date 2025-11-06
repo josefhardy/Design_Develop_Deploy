@@ -30,8 +30,9 @@ public class SupervisorMenu
         var supervisorService = new SupervisorService(_connectionString, supervisor);
 
         // 🔹 Reminder checks using repository helper functions
-        bool updateOfficeHours = supervisorRepo.NeedsOfficeHourUpdate(supervisor.supervisor_id);
-        bool updateWellbeingCheck = supervisorRepo.NeedsWellbeingCheckUpdate(supervisor.supervisor_id);
+        var healthService = new SupervisorFunctionService(supervisorRepo);
+        bool updateOfficeHours = healthService.NeedsOfficeHourUpdate(supervisor.supervisor_id);
+        bool updateWellbeingCheck = healthService.NeedsWellbeingCheckUpdate(supervisor.supervisor_id);
 
         var reminders = new List<string>();
         if (updateOfficeHours) reminders.Add("your office hours");
@@ -55,64 +56,73 @@ public class SupervisorMenu
             Console.WriteLine("=========== Supervisor Menu ===========\n");
 
             var menuItems = new List<string>
-        {
-            "View all your students",
-            "View details of a specific student",
-            "View inactive students",
-            "Book a meeting with a student",
-            "View your meetings",
-            "Update office hours",
-            "View your performance metrics",
-            "Logout"
-        };
+    {
+        "View all your students",
+        "View details of a specific student",
+        "View inactive students",
+        "Book a meeting with a student",
+        "View your meetings",
+        "Update office hours",
+        "View your performance metrics",
+        "Logout"
+    };
 
             int choice = ConsoleHelper.PromptForChoice(menuItems, "Select an option:");
 
-            switch (choice)
+            try
             {
-                case 1:
-                    supervisorService.ViewAllStudents();
-                    break;
+                switch (choice)
+                {
+                    case 1:
+                        supervisorService.ViewAllStudents();
+                        break;
 
-                case 2:
-                    supervisorService.ViewStudentDetails();
-                    break;
+                    case 2:
+                        supervisorService.ViewStudentDetails();
+                        break;
 
-                case 3:
-                    supervisorService.ViewInactiveStudents();
-                    break;
+                    case 3:
+                        supervisorService.ViewInactiveStudents();
+                        break;
 
-                case 4:
-                    supervisorService.BookMeeting();
-                    break;
+                    case 4:
+                        supervisorService.BookMeeting();
+                        break;
 
-                case 5:
-                    supervisorService.ViewMeetings();
-                    break;
+                    case 5:
+                        supervisorService.ViewMeetings();
+                        break;
 
-                case 6:
-                    supervisorService.UpdateOfficeHours();
-                    break;
+                    case 6:
+                        supervisorService.UpdateOfficeHours();
+                        break;
 
-                case 7:
-                    supervisorService.ViewPerformanceMetrics();
-                    break;
+                    case 7:
+                        supervisorService.ViewPerformanceMetrics();
+                        break;
 
-                case 8:
-                    Console.WriteLine("\nLogging out...");
-                    Thread.Sleep(1000);
-                    exit = true;
-                    break;
+                    case 8:
+                        Console.WriteLine("\nLogging out...");
+                        Thread.Sleep(1000);
+                        exit = true;
+                        break;
 
-                default:
-                    Console.WriteLine("\nInvalid choice, please try again.");
-                    Thread.Sleep(1000);
-                    break;
+                    default:
+                        Console.WriteLine("\nInvalid choice, please try again.");
+                        Thread.Sleep(1000);
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                ConsoleHelper.PrintSection("⚠️  Error", ex.Message);
+                ConsoleHelper.Pause("Press any key to return to the menu...");
             }
 
             if (!exit)
                 ConsoleHelper.Pause();
         }
+
     }
 
 }

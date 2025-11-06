@@ -96,10 +96,11 @@ public class SupervisorRepository
                 }
             }
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Error retrieving supervisors: {ex.Message}");
+            throw;
         }
+
 
         return supervisors;
     }
@@ -124,46 +125,28 @@ public class SupervisorRepository
         }
     }
 
-    public bool NeedsOfficeHourUpdate(int supervisorId)
+    public DateTime? GetLastOfficeHourUpdate(int supervisorId)
     {
-        using (var conn = new SQLiteConnection(_connectionString))
-        {
-            conn.Open();
-            string query = @"SELECT last_office_hours_update
-                         FROM Supervisors
-                         WHERE supervisor_id = @SupervisorId";
-
-            using (var cmd = new SQLiteCommand(query, conn))
-            {
-                cmd.Parameters.AddWithValue("@SupervisorId", supervisorId);
-                var result = cmd.ExecuteScalar();
-                if (result == null || result == DBNull.Value)
-                    return true;
-
-                DateTime lastUpdate = Convert.ToDateTime(result);
-                return (DateTime.UtcNow - lastUpdate).TotalDays >= 7;
-            }
-        }
+        using var conn = new SQLiteConnection(_connectionString);
+        conn.Open();
+        const string query = "SELECT last_office_hours_update FROM Supervisors WHERE supervisor_id = @SupervisorId";
+        using var cmd = new SQLiteCommand(query, conn);
+        cmd.Parameters.AddWithValue("@SupervisorId", supervisorId);
+        var result = cmd.ExecuteScalar();
+        return result == DBNull.Value ? null : Convert.ToDateTime(result);
     }
 
-    public bool NeedsWellbeingCheckUpdate(int supervisorId)
+    public DateTime? GetLastWellbeingCheck(int supervisorId)
     {
-        using (var conn = new SQLiteConnection(_connectionString))
-        {
-            conn.Open();
-            string query = "SELECT last_wellbeing_check FROM Supervisors WHERE supervisor_id = @SupervisorId";
-            using (var cmd = new SQLiteCommand(query, conn))
-            {
-                cmd.Parameters.AddWithValue("@SupervisorId", supervisorId);
-                var result = cmd.ExecuteScalar();
-
-                if (result == null) return true;
-
-                DateTime lastUpdate = Convert.ToDateTime(result);
-                return (DateTime.UtcNow - lastUpdate).TotalDays > 7;
-            }
-        }
+        using var conn = new SQLiteConnection(_connectionString);
+        conn.Open();
+        const string query = "SELECT last_wellbeing_check FROM Supervisors WHERE supervisor_id = @SupervisorId";
+        using var cmd = new SQLiteCommand(query, conn);
+        cmd.Parameters.AddWithValue("@SupervisorId", supervisorId);
+        var result = cmd.ExecuteScalar();
+        return result == DBNull.Value ? null : Convert.ToDateTime(result);
     }
+
 
     public void ResetMonthlyInteractionStats()
     {
