@@ -28,8 +28,8 @@ public class Supervisor : User
         string officeHours,
         DateTime? lastOfficeHoursUpdate,
         DateTime? lastWellbeingCheck,
-        int meetingsBookedLastMonth,
-        int wellbeingChecksLastMonth
+        int meetingsBookedThisMonth,
+        int wellbeingChecksThisMonth
     ) : base(firstName, lastName, email, password, role)
     {
         supervisor_id = supervisorId;
@@ -37,7 +37,7 @@ public class Supervisor : User
         office_hours = officeHours;
         last_office_hours_update = lastOfficeHoursUpdate;
         last_wellbeing_check = lastWellbeingCheck;
-        meetings_booked_this_month = meetingsBookedLastMonth;
-        wellbeing_checks_this_month = wellbeingChecksLastMonth;
+        meetings_booked_this_month = meetingsBookedThisMonth;
+        wellbeing_checks_this_month = wellbeingChecksThisMonth;
     }
 }

@@ -155,8 +155,8 @@ public class SupervisorRepository
             const string query = @"
         UPDATE Supervisors
         SET 
-            meetings_booked_last_month = 0,
-            wellbeing_checks_last_month = 0,
+            meetings_booked_this_month = 0,
+            wellbeing_checks_this_month = 0,
             last_meeting_update_month = strftime('%m', 'now')
         WHERE last_meeting_update_month != strftime('%m', 'now');";
 

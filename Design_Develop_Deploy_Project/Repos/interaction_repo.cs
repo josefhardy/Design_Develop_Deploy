@@ -29,8 +29,8 @@ public class InteractionRepository
 
                 string columnToUpdate = interaction_type.ToLower() switch
                 {
-                    "meeting" => "meetings_booked_last_month",
-                    "wellbeing_check" => "wellbeing_checks_last_month",
+                    "meeting" => "meetings_booked_this_month",
+                    "wellbeing_check" => "wellbeing_checks_this_month",
                     _ => null
                 };
 
@@ -107,7 +107,7 @@ public class InteractionRepository
             {
                 conn.Open();
                 string query = @"
-                    SELECT s.supervisor_id, s.meetings_booked_last_month, s.wellbeing_checks_last_month,
+                    SELECT s.supervisor_id, s.meetings_booked_this_month, s.wellbeing_checks_this_month,
                            u.user_id, u.first_name, u.last_name, u.email, u.role
                     FROM Supervisors s
                     JOIN Users u ON s.user_id = u.user_id";

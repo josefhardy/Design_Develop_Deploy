@@ -49,8 +49,7 @@ public class MeetingRepository
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error adding meeting: {ex.Message}");
-            return false;
+            throw new Exception($"Error adding meeting: {ex.Message}", ex);
         }
     }
 
@@ -88,7 +87,7 @@ public class MeetingRepository
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error retrieving meeting by variable: {ex.Message}");
+            throw new Exception($"Error retrieving meeting: {ex.Message}", ex);
         }
 
         return null;
@@ -115,7 +114,7 @@ public class MeetingRepository
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error deleting meeting: {ex.Message}");
+            throw new Exception($"Error deleting meeting: {ex.Message}", ex);
         }
     }
 
@@ -167,7 +166,7 @@ public class MeetingRepository
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error retrieving meetings for supervisor: {ex.Message}");
+            throw new Exception($"Error retrieving meetings by supervisor ID: {ex.Message}", ex);
         }
 
         return meetings;
@@ -205,7 +204,7 @@ public class MeetingRepository
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error retrieving meetings by supervisor/date: {ex.Message}");
+            throw new Exception($"Error retrieving meetings by supervisor and date: {ex.Message}", ex);
         }
 
         return meetings;

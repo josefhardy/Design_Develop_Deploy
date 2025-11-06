@@ -2,11 +2,14 @@
 using Design_Develop_Deploy_Project.Services;
 using Design_Develop_Deploy_Project.UI;
 using Design_Develop_Deploy_Project.Utilities;
+using Design_Develop_Deploy_Project.Tables;
 using System;
 class Program 
 {
     static void Main(string[] args) 
     {
+        DatabaseInitializer.EnsureCreated();
+        DatabaseSeeder.Seed();
         string connectionString = "Data Source=Project_database.db;Version=3;";
 
         var userRepo = new UserRepository(connectionString);
