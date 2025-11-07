@@ -2,6 +2,7 @@
 using System.Data.SQLite;
 using System.Collections.Generic;
 using System.Linq;
+using System.Diagnostics;
 
 namespace Design_Develop_Deploy_Project.Tables
 {
@@ -34,50 +35,69 @@ namespace Design_Develop_Deploy_Project.Tables
 
                 var random = new Random();
 
+                // ---- Helper for unique passwords ----
+                static string GeneratePassword(Random random, int length = 10)
+                {
+                    const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+                    return new string(Enumerable.Repeat(chars, length)
+                        .Select(s => s[random.Next(s.Length)]).ToArray());
+                }
+
                 // ---- Data Sources ----
-                string[] maleNames = { "James", "Liam", "Noah", "Ethan", "Oliver", "Lucas", "Henry", "Mason", "Jack", "William" };
-                string[] femaleNames = { "Emma", "Olivia", "Ava", "Sophia", "Isabella", "Mia", "Charlotte", "Amelia", "Harper", "Ella" };
-                string[] lastNames = { "Smith", "Johnson", "Brown", "Williams", "Jones", "Taylor", "Davis", "Clark", "Lee", "Harris", "Patel", "Nguyen", "Zhang", "Singh" };
-                string[] wellbeingStatuses = { "Excellent", "Good", "Average", "Struggling", "Stressed", "Unwell" };
-                var wellbeingMap = new Dictionary<string, int> {
-                    { "Excellent", 9 }, { "Good", 8 }, { "Average", 6 }, { "Struggling", 4 }, { "Stressed", 3 }, { "Unwell", 2 }
-                };
+                string[] maleNames = {
+            "James", "Liam", "Noah", "Ethan", "Oliver", "Lucas", "Henry", "Mason", "Jack", "William",
+            "Alexander", "Benjamin", "Jacob", "Logan", "Elijah", "Daniel", "Matthew", "Aiden", "Samuel", "Owen",
+            "Caleb", "Nathan", "Isaac", "Joseph", "Ryan", "Adam", "Andrew", "Aaron", "Connor", "Dylan"
+        };
+
+                string[] femaleNames = {
+            "Emma", "Olivia", "Ava", "Sophia", "Isabella", "Mia", "Charlotte", "Amelia", "Harper", "Ella",
+            "Grace", "Lily", "Abigail", "Emily", "Aria", "Chloe", "Scarlett", "Victoria", "Zoe", "Layla",
+            "Hannah", "Nora", "Evelyn", "Lucy", "Sofia", "Leah", "Sarah", "Maya", "Hazel", "Claire"
+        };
+
+                string[] lastNames = {
+            "Smith", "Johnson", "Brown", "Williams", "Jones", "Taylor", "Davis", "Clark", "Lee", "Harris",
+            "Patel", "Nguyen", "Zhang", "Singh", "Wilson", "Anderson", "Thomas", "Moore", "Martin", "Thompson",
+            "White", "Lopez", "King", "Scott", "Hill", "Green", "Adams", "Baker", "Wright", "Nelson",
+            "Mitchell", "Campbell", "Carter", "Roberts", "Turner", "Phillips", "Evans", "Collins", "Stewart", "Edwards",
+            "Morris", "Rogers", "Cook", "Murphy", "Bailey", "Cooper", "Reed", "Howard", "Ward", "Foster"
+        };
 
                 string[] officeHours = {
-                                         "Monday 10–12am",
-                                         "Tuesday 2–4pm",
-                                         "Wednesday 9–11am",
-                                         "Thursday 1–3pm",
-                                         "Friday 10–12am"
-                                        };
-
+            "Monday 10:00 – 12:00",
+            "Tuesday 14:00 – 16:00",
+            "Wednesday 09:00 – 11:00",
+            "Thursday 13:00 – 15:00",
+            "Friday 10:00 – 12:00"
+        };
 
                 // ---- 1. Senior Tutor ----
                 long seniorTutorUserId;
+                string tutorPass = GeneratePassword(random);
                 using (var cmd = new SQLiteCommand(
                     "INSERT INTO Users (first_name, last_name, email, password, role) VALUES (@f, @l, @e, @p, 'senior_tutor'); SELECT last_insert_rowid();", conn))
                 {
                     cmd.Parameters.AddWithValue("@f", "Sarah");
                     cmd.Parameters.AddWithValue("@l", "Thompson");
-                    cmd.Parameters.AddWithValue("@e", "sarah.thompson@university.edu");
-                    cmd.Parameters.AddWithValue("@p", "profsecure123");
+                    cmd.Parameters.AddWithValue("@e", "sarah.thompson@hull.ac.uk");
+                    cmd.Parameters.AddWithValue("@p", tutorPass);
                     seniorTutorUserId = (long)cmd.ExecuteScalar();
                 }
 
-                Console.WriteLine("👩‍🏫 Senior Tutor: Prof. Sarah Thompson created.");
+                Console.WriteLine($"👩‍🏫 Senior Tutor: Prof. Sarah Thompson created (Password: {tutorPass})");
 
                 // ---- 2. Supervisors ----
                 var supervisorList = new List<(long supervisorId, string fullName)>();
                 var supNames = new (string, string)[] {
-                    ("Emily", "Zhang"), ("David", "Patel"), ("Rachel", "Hughes"), ("Michael", "Carter"), ("Anna", "Nguyen")
-                };
+            ("Emily", "Zhang"), ("David", "Patel"), ("Rachel", "Hughes"), ("Michael", "Carter"), ("Anna", "Nguyen")
+        };
 
-                for (int i = 0; i < supNames.Length; i++)
+                foreach (var (first, last) in supNames)
                 {
-                    string first = supNames[i].Item1;
-                    string last = supNames[i].Item2;
-                    string email = $"{first.ToLower()}.{last.ToLower()}@university.edu";
+                    string email = $"{first.ToLower()}.{last.ToLower()}@hull.ac.uk";
                     string office = officeHours[random.Next(officeHours.Length)];
+                    string password = GeneratePassword(random);
 
                     long userId;
                     using (var userCmd = new SQLiteCommand(
@@ -86,15 +106,15 @@ namespace Design_Develop_Deploy_Project.Tables
                         userCmd.Parameters.AddWithValue("@f", first);
                         userCmd.Parameters.AddWithValue("@l", last);
                         userCmd.Parameters.AddWithValue("@e", email);
-                        userCmd.Parameters.AddWithValue("@p", "teach123");
+                        userCmd.Parameters.AddWithValue("@p", password);
                         userId = (long)userCmd.ExecuteScalar();
                     }
 
                     long supervisorId;
                     using (var supCmd = new SQLiteCommand(
                         @"INSERT INTO Supervisors (user_id, last_office_hours_update, last_wellbeing_check, office_hours) 
-                          VALUES (@u, date('now'), date('now'), @o); 
-                          SELECT last_insert_rowid();", conn))
+                  VALUES (@u, date('now'), date('now'), @o); 
+                  SELECT last_insert_rowid();", conn))
                     {
                         supCmd.Parameters.AddWithValue("@u", userId);
                         supCmd.Parameters.AddWithValue("@o", office);
@@ -102,23 +122,49 @@ namespace Design_Develop_Deploy_Project.Tables
                     }
 
                     supervisorList.Add((supervisorId, $"{first} {last}"));
-                    Console.WriteLine($"🧑‍🏫 Supervisor created: Dr. {first} {last}, office hours {office}");
+                    Console.WriteLine($"🧑‍🏫 Supervisor: Dr. {first} {last}, Office hours: {office}, Password: {password}");
                 }
 
                 // ---- 3. Students ----
                 var studentList = new List<(long studentId, long supervisorId, string name)>();
+
+                // Create mutable name pools for uniqueness
+                var availableMaleNames = new List<string>(maleNames);
+                var availableFemaleNames = new List<string>(femaleNames);
+
                 foreach (var (supervisorId, supervisorName) in supervisorList)
                 {
                     int numStudents = random.Next(5, 8);
                     for (int i = 0; i < numStudents; i++)
                     {
                         bool isFemale = random.NextDouble() < 0.5;
-                        string first = isFemale ? femaleNames[random.Next(femaleNames.Length)] : maleNames[random.Next(maleNames.Length)];
-                        string last = lastNames[random.Next(lastNames.Length)];
-                        string email = $"{first.ToLower()}.{last.ToLower()}@student.university.edu";
+                        string first;
 
-                        string wellbeing = wellbeingStatuses[random.Next(wellbeingStatuses.Length)];
-                        int score = wellbeingMap[wellbeing];
+                        // Choose unique first name
+                        if (isFemale && availableFemaleNames.Count > 0)
+                        {
+                            int index = random.Next(availableFemaleNames.Count);
+                            first = availableFemaleNames[index];
+                            availableFemaleNames.RemoveAt(index);
+                        }
+                        else if (!isFemale && availableMaleNames.Count > 0)
+                        {
+                            int index = random.Next(availableMaleNames.Count);
+                            first = availableMaleNames[index];
+                            availableMaleNames.RemoveAt(index);
+                        }
+                        else
+                        {
+                            // Fallback: if names run out, generate synthetic unique name
+                            first = "Student" + random.Next(1000, 9999);
+                        }
+
+                        string last = lastNames[random.Next(lastNames.Length)];
+                        string email = $"{first.ToLower()}.{last.ToLower()}{random.Next(1000, 9999)}@hull.ac.uk";
+                        string password = GeneratePassword(random);
+
+                        int score = random.Next(2, 10); // wellbeing_score from 2–9
+                        string lastUpdate = DateTime.Now.AddDays(-random.Next(0, 30)).ToString("yyyy-MM-dd HH:mm:ss");
 
                         long userId;
                         using (var userCmd = new SQLiteCommand(
@@ -127,24 +173,24 @@ namespace Design_Develop_Deploy_Project.Tables
                             userCmd.Parameters.AddWithValue("@f", first);
                             userCmd.Parameters.AddWithValue("@l", last);
                             userCmd.Parameters.AddWithValue("@e", email);
-                            userCmd.Parameters.AddWithValue("@p", "student123");
+                            userCmd.Parameters.AddWithValue("@p", password);
                             userId = (long)userCmd.ExecuteScalar();
                         }
 
                         long studentId;
                         using (var studCmd = new SQLiteCommand(
                             @"INSERT INTO Students (user_id, supervisor_id, wellbeing_score, last_status_update)
-                              VALUES (@u, @s, @w, @status); SELECT last_insert_rowid();", conn))
+                      VALUES (@u, @s, @w, @d); SELECT last_insert_rowid();", conn))
                         {
                             studCmd.Parameters.AddWithValue("@u", userId);
                             studCmd.Parameters.AddWithValue("@s", supervisorId);
                             studCmd.Parameters.AddWithValue("@w", score);
-                            studCmd.Parameters.AddWithValue("@status", wellbeing);
+                            studCmd.Parameters.AddWithValue("@d", lastUpdate);
                             studentId = (long)studCmd.ExecuteScalar();
                         }
 
                         studentList.Add((studentId, supervisorId, $"{first} {last}"));
-                        Console.WriteLine($"🎓 Student created: {first} {last} ({wellbeing}, score {score}) under {supervisorName}");
+                        Console.WriteLine($"🎓 Student: {first} {last}, Email: {email}, Password: {password}, Wellbeing score: {score} (updated {lastUpdate}) under {supervisorName}");
                     }
                 }
 
@@ -162,7 +208,7 @@ namespace Design_Develop_Deploy_Project.Tables
 
                         using (var meetCmd = new SQLiteCommand(
                             @"INSERT INTO Meetings (student_id, supervisor_id, meeting_date, start_time, end_time, notes)
-                              VALUES (@stu, @sup, @d, @st, @et, @n);", conn))
+                      VALUES (@stu, @sup, @d, @st, @et, @n);", conn))
                         {
                             meetCmd.Parameters.AddWithValue("@stu", studentId);
                             meetCmd.Parameters.AddWithValue("@sup", supervisorId);
@@ -173,11 +219,83 @@ namespace Design_Develop_Deploy_Project.Tables
                             meetCmd.ExecuteNonQuery();
                         }
 
-                        Console.WriteLine($"🗓️  Meeting logged for {name} on {date:yyyy-MM-dd}");
+                        Console.WriteLine($"🗓️ Meeting logged for {name} on {date:yyyy-MM-dd}");
                     }
                 }
 
                 Console.WriteLine("🎉 Realistic database seeding completed!");
+            }
+        }
+
+
+        public static void WipeTable()
+        {
+            string dbpath = "Project_database.db";
+            string connString = $"Data Source={dbpath};Version=3;";
+
+            using (var conn = new SQLiteConnection(connString))
+            {
+                conn.Open();
+
+                using (var pragmaCommand = new SQLiteCommand("PRAGMA foreign_keys = ON;", conn))
+                    pragmaCommand.ExecuteNonQuery();
+
+                using (var clearCmd = new SQLiteCommand(@"
+            DELETE FROM Meetings;
+            DELETE FROM Students;
+            DELETE FROM Supervisors;
+            DELETE FROM Users;
+        ", conn))
+                {
+                    clearCmd.ExecuteNonQuery();
+                    Console.WriteLine("🧹 Cleared all existing data from database tables.");
+                }
+            }
+        }
+
+        public static void PrintAllUsers()
+        {
+            string dbpath = "Project_database.db";
+            string connString = $"Data Source={dbpath};Version=3;";
+
+            using (var conn = new SQLiteConnection(connString))
+            {
+                conn.Open();
+
+                using (var cmd = new SQLiteCommand("SELECT user_id, first_name, last_name, email, password, role FROM Users ORDER BY user_id;", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    Console.WriteLine("==============================================");
+                    Console.WriteLine("📋 USERS TABLE CONTENTS");
+                    Console.WriteLine("==============================================");
+
+                    if (!reader.HasRows)
+                    {
+                        Console.WriteLine("No users found in the database.");
+                        return;
+                    }
+
+                    while (reader.Read())
+                    {
+                        int userId = reader.GetInt32(0);
+                        string firstName = reader.GetString(1);
+                        string lastName = reader.GetString(2);
+                        string email = reader.GetString(3);
+                        string password = reader.GetString(4);
+                        string role = reader.GetString(5);
+
+                        Console.WriteLine("----------------------------------------------");
+                        Console.WriteLine($"🆔  User ID: {userId}");
+                        Console.WriteLine($"👤 Name: {firstName} {lastName}");
+                        Console.WriteLine($"📧 Email: {email}");
+                        Console.WriteLine($"🔑 Password: {password}");
+                        Console.WriteLine($"🎭 Role: {role}");
+                    }
+
+                    Console.WriteLine("----------------------------------------------");
+                    Console.WriteLine("✅ All user records displayed successfully.");
+                    Console.WriteLine("==============================================");
+                }
             }
         }
     }

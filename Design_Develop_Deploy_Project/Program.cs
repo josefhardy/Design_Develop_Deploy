@@ -9,7 +9,11 @@ class Program
     static void Main(string[] args) 
     {
         DatabaseInitializer.EnsureCreated();
+        DatabaseSeeder.WipeTable();
+        Thread.Sleep(2000);
         DatabaseSeeder.Seed();
+        Console.Clear();
+        DatabaseSeeder.PrintAllUsers();
         string connectionString = "Data Source=Project_database.db;Version=3;";
 
         var userRepo = new UserRepository(connectionString);
