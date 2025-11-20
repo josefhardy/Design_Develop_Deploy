@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
+using Design_Develop_Deploy_Project.Objects;
 
 namespace Design_Develop_Deploy_Project.Repos;
 public class StatusRepository
@@ -12,7 +13,7 @@ public class StatusRepository
 		_connectionString = connectionString;
     }
 
-    public bool UpdateStudentWellbeing(int studentId, int wellbeingScore)
+    public bool UpdateStudentWellbeing(int studentId, int wellbeingScore, Student student)
     {
         try
         {
@@ -31,6 +32,8 @@ public class StatusRepository
                     return rowsaffected > 0;
                 }
             }
+
+            student.wellbeing_score = wellbeingScore;
         }
         catch (Exception ex)
         {

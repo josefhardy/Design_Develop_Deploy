@@ -41,7 +41,6 @@ public class StudentService
         }
         else
         {
-            Console.WriteLine("\nReturning to the main menu...");
             Thread.Sleep(1500);
         }
     }
@@ -64,7 +63,6 @@ public class StudentService
         catch (FormatException)
         {
             Console.WriteLine("\nInvalid input — score must be a number between 0 and 10.");
-            Console.WriteLine("Returning to menu...");
             Thread.Sleep(1500);
             return;
         }
@@ -72,15 +70,14 @@ public class StudentService
         if (new_score_int < 0 || new_score_int > 10)
         {
             Console.WriteLine("\nInvalid score — please enter a number between 0 and 10.");
-            Console.WriteLine("Returning to menu...");
             Thread.Sleep(1500);
             return;
         }
 
-        _statusRepo.UpdateStudentWellbeing(student.student_id, new_score_int);
+        _statusRepo.UpdateStudentWellbeing(student.student_id, new_score_int, student);
+        student.wellbeing_score = new_score_int;
 
         Console.WriteLine("\nWellbeing status updated successfully!");
-        Console.WriteLine("Returning to menu...");
         Thread.Sleep(1500);
     }
 
@@ -89,20 +86,7 @@ public class StudentService
         Console.Clear();
         var scheduler = new MeetingScheduler(_meetingRepo, _supervisorRepo);
 
-        var supervisors = _supervisorRepo.GetAllSupervisors();
-        if (supervisors.Count == 0)
-        {
-            ConsoleHelper.PrintSection("No Supervisors", "No supervisors available for booking.");
-            ConsoleHelper.Pause();
-            return;
-        }
-
-        int supChoice = ConsoleHelper.PromptForChoice(
-            supervisors.Select(s => $"{s.first_name} {s.last_name}").ToList(),
-            "Select a supervisor:"
-        );
-
-        var selectedSupervisor = supervisors[supChoice - 1];
+        Supervisor supervisor = _supervisorRepo.GetSupervisorById(student.supervisor_id);
 
         // 🔹 Get available slots via the new scheduler
         var availableSlots = new List<(DateTime start, DateTime end)>();
@@ -112,7 +96,7 @@ public class StudentService
             if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
                 continue;
 
-            var slotsForDay = scheduler.FetchAvailableSlots(selectedSupervisor.supervisor_id, date);
+            var slotsForDay = scheduler.FetchAvailableSlots(supervisor.supervisor_id, date);
             availableSlots.AddRange(slotsForDay);
         }
 
@@ -135,7 +119,7 @@ public class StudentService
         var meeting = new Meeting
         {
             student_id = student.student_id,
-            supervisor_id = selectedSupervisor.supervisor_id,
+            supervisor_id = supervisor.supervisor_id,
             meeting_date = chosenSlot.start.Date,
             start_time = chosenSlot.start.TimeOfDay,
             end_time = chosenSlot.end.TimeOfDay,
@@ -145,7 +129,7 @@ public class StudentService
         // 🔹 Validate meeting before saving
         if (!scheduler.ValidateMeeting(meeting, out string message))
         {
-            ConsoleHelper.PrintSection("❌ Invalid Meeting", message);
+            ConsoleHelper.PrintSection("Invalid Meeting", message);
             ConsoleHelper.Pause();
             return;
         }
@@ -153,14 +137,12 @@ public class StudentService
         bool success = _meetingRepo.AddMeeting(meeting);
         if (success)
         {
-            ConsoleHelper.PrintSection("✅ Success", "Meeting booked successfully!");
+            ConsoleHelper.PrintSection("Success", "Meeting booked successfully!");
         }
         else
         {
-            ConsoleHelper.PrintSection("❌ Error", "Failed to book the meeting.");
+            ConsoleHelper.PrintSection("Error", "Failed to book the meeting.");
         }
-
-        ConsoleHelper.Pause();
     }
 
     public void ViewMeetings()

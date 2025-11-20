@@ -107,18 +107,35 @@ namespace Design_Develop_Deploy_Project.Services
             if (string.IsNullOrWhiteSpace(officeHours))
                 return result;
 
-            foreach (var segment in officeHours.Split(',', StringSplitOptions.RemoveEmptyEntries))
+            // Split on commas: e.g. "Monday 09:00-11:00,Tuesday 14:00-16:00"
+            var segments = officeHours.Split(',', StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (var segment in segments)
             {
-                var times = segment.Split('-', StringSplitOptions.RemoveEmptyEntries);
+                var trimmed = segment.Trim();
+
+                // Example segment: "Monday 09:00-11:00"
+                // Split on space to remove the day: ["Monday", "09:00-11:00"]
+                var parts = trimmed.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+                if (parts.Length < 2)
+                    continue;
+
+                // Last item is always the time range
+                string timeRange = parts.Last(); // "09:00-11:00"
+
+                var times = timeRange.Split('-', StringSplitOptions.RemoveEmptyEntries);
                 if (times.Length == 2 &&
-                    TimeSpan.TryParse(times[0], out var s) &&
-                    TimeSpan.TryParse(times[1], out var e))
+                    TimeSpan.TryParse(times[0], out var start) &&
+                    TimeSpan.TryParse(times[1], out var end))
                 {
-                    result.Add((s, e));
+                    result.Add((start, end));
                 }
             }
 
             return result;
         }
+
+
     }
 }

@@ -8,13 +8,20 @@ namespace Design_Develop_Deploy_Project.Tables
     {
         public static void EnsureCreated()
         {
-            string dbpath = "Project_database.db";
+            string dbpath = Path.GetFullPath(
+                Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Tables", "Project_database.db")
+            );
 
+            // Ensure folder exists
+            Directory.CreateDirectory(Path.GetDirectoryName(dbpath));
+
+            // Create file if missing
             if (!File.Exists(dbpath))
             {
                 SQLiteConnection.CreateFile(dbpath);
-                Console.WriteLine("Database created");
+                Console.WriteLine("Database created at: " + dbpath);
             }
+
 
             string conn_string = $"Data Source={dbpath};Version=3;";
 

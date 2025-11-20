@@ -27,7 +27,9 @@ public class StudentMenu
 
         if ((DateTime.UtcNow - student.last_status_update.Value).TotalDays > 7)
         {
-            Console.WriteLine($"{student.first_name} it has been more than a week since your last status update, please let us know hopw you're feeling");
+            Console.Clear();
+            Console.WriteLine($"{student.first_name} it has been more than a week since your last status update, please let us know how you're feeling");
+            Thread.Sleep(5000);
         }
         bool exit = false;
 

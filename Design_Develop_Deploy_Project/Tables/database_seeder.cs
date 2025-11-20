@@ -65,12 +65,12 @@ namespace Design_Develop_Deploy_Project.Tables
         };
 
                 string[] officeHours = {
-            "Monday 10:00 – 12:00",
-            "Tuesday 14:00 – 16:00",
-            "Wednesday 09:00 – 11:00",
-            "Thursday 13:00 – 15:00",
-            "Friday 10:00 – 12:00"
-        };
+                "Monday 09:00-11:00, Wednesday 13:00-15:00",
+                "Tuesday 10:00-12:00, Thursday 14:00-16:00",
+                "Wednesday 09:00-11:00, Friday 10:00-12:00",
+                "Monday 14:00-16:00, Thursday 09:00-11:00",
+                "Tuesday 13:00-15:00, Friday 09:00-11:00"
+                };
 
                 // ---- 1. Senior Tutor ----
                 long seniorTutorUserId;

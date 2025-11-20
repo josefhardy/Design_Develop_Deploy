@@ -15,6 +15,7 @@ class Program
         Console.Clear();
         DatabaseSeeder.PrintAllUsers();
         string connectionString = "Data Source=Project_database.db;Version=3;";
+        Console.ReadKey();
 
         var userRepo = new UserRepository(connectionString);
         var validators = new Validators(userRepo);
@@ -27,6 +28,12 @@ class Program
             var user = loginMenu.ShowLoginScreen();
 
             if (user == null) { continue; }
+
+            Console.Clear();
+            Console.WriteLine($"Hi {user.first_name}, Welcome back!");
+            Console.WriteLine();
+            Console.WriteLine("Logging you in now...");
+            Thread.Sleep(3000);
 
             switch (user.role.ToLower()) 
             {

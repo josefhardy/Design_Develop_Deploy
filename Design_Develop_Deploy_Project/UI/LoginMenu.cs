@@ -20,6 +20,7 @@ namespace Design_Develop_Deploy_Project.UI
 
         public User ShowLoginScreen() 
         {
+            Thread.Sleep(3000);
             Console.Clear();
             Console.WriteLine("========== LOGIN ==========");
             Console.WriteLine("Please enter email");

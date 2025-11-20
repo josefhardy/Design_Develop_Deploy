@@ -87,7 +87,7 @@ public class SupervisorMenu
             }
             catch (Exception ex)
             {
-                ConsoleHelper.PrintSection("⚠️  Error", ex.Message);
+                ConsoleHelper.PrintSection("Error", ex.Message);
                 ConsoleHelper.Pause("Press any key to return to the menu...");
             }
 
@@ -107,10 +107,12 @@ public class SupervisorMenu
 
         if (reminders.Count > 0)
         {
+            Console.Clear();
             string joined = string.Join(" and ", reminders);
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine($"\n⚠️  {supervisor.first_name}, it has been more than a week since your last {joined}.");
+            Console.WriteLine($"\n{supervisor.first_name}, it has been more than a week since your last {joined}.");
             Console.WriteLine("Please update them soon.\n");
+            Thread.Sleep(5000);
             Console.ResetColor();
         }
     }
