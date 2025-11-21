@@ -227,7 +227,7 @@ public class SupervisorService
             .Select(m => {
                 var student = _studentRepo.GetStudentById(m.student_id);
                 string studentName = student != null ? $"{student.first_name} {student.last_name}" : "Unknown";
-                return $"Date: {m.meeting_date:ddd dd MMM HH:mm} | Student: {studentName} | Notes: {(string.IsNullOrWhiteSpace(m.notes) ? "None" : m.notes)}";
+                return $"Date: {m.meeting_date:ddd dd MMM} {m.start_time:hh\\:mm} – {m.end_time:hh\\:mm} | Student: {studentName} | Notes: {(string.IsNullOrWhiteSpace(m.notes) ? "None" : m.notes)}";
             }).ToList();
 
         for (int i = 0; i < meetings_details.Count; i++)

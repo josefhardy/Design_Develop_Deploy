@@ -10,8 +10,13 @@ namespace Design_Develop_Deploy_Project.Tables
     {
         public static void Seed()
         {
-            string dbpath = "Project_database.db";
+            string dbpath = Path.GetFullPath(
+                Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Tables", "Project_database.db")
+            );
+
             string connString = $"Data Source={dbpath};Version=3;";
+            Console.WriteLine("[DEBUG] Seeder using DB: " + dbpath);
+
 
             using (var conn = new SQLiteConnection(connString))
             {
@@ -45,32 +50,32 @@ namespace Design_Develop_Deploy_Project.Tables
 
                 // ---- Data Sources ----
                 string[] maleNames = {
-            "James", "Liam", "Noah", "Ethan", "Oliver", "Lucas", "Henry", "Mason", "Jack", "William",
-            "Alexander", "Benjamin", "Jacob", "Logan", "Elijah", "Daniel", "Matthew", "Aiden", "Samuel", "Owen",
-            "Caleb", "Nathan", "Isaac", "Joseph", "Ryan", "Adam", "Andrew", "Aaron", "Connor", "Dylan"
+            "James","Liam","Noah","Ethan","Oliver","Lucas","Henry","Mason","Jack","William",
+            "Alexander","Benjamin","Jacob","Logan","Elijah","Daniel","Matthew","Aiden","Samuel","Owen",
+            "Caleb","Nathan","Isaac","Joseph","Ryan","Adam","Andrew","Aaron","Connor","Dylan"
         };
 
                 string[] femaleNames = {
-            "Emma", "Olivia", "Ava", "Sophia", "Isabella", "Mia", "Charlotte", "Amelia", "Harper", "Ella",
-            "Grace", "Lily", "Abigail", "Emily", "Aria", "Chloe", "Scarlett", "Victoria", "Zoe", "Layla",
-            "Hannah", "Nora", "Evelyn", "Lucy", "Sofia", "Leah", "Sarah", "Maya", "Hazel", "Claire"
+            "Emma","Olivia","Ava","Sophia","Isabella","Mia","Charlotte","Amelia","Harper","Ella",
+            "Grace","Lily","Abigail","Emily","Aria","Chloe","Scarlett","Victoria","Zoe","Layla",
+            "Hannah","Nora","Evelyn","Lucy","Sofia","Leah","Sarah","Maya","Hazel","Claire"
         };
 
                 string[] lastNames = {
-            "Smith", "Johnson", "Brown", "Williams", "Jones", "Taylor", "Davis", "Clark", "Lee", "Harris",
-            "Patel", "Nguyen", "Zhang", "Singh", "Wilson", "Anderson", "Thomas", "Moore", "Martin", "Thompson",
-            "White", "Lopez", "King", "Scott", "Hill", "Green", "Adams", "Baker", "Wright", "Nelson",
-            "Mitchell", "Campbell", "Carter", "Roberts", "Turner", "Phillips", "Evans", "Collins", "Stewart", "Edwards",
-            "Morris", "Rogers", "Cook", "Murphy", "Bailey", "Cooper", "Reed", "Howard", "Ward", "Foster"
+            "Smith","Johnson","Brown","Williams","Jones","Taylor","Davis","Clark","Lee","Harris",
+            "Patel","Nguyen","Zhang","Singh","Wilson","Anderson","Thomas","Moore","Martin","Thompson",
+            "White","Lopez","King","Scott","Hill","Green","Adams","Baker","Wright","Nelson",
+            "Mitchell","Campbell","Carter","Roberts","Turner","Phillips","Evans","Collins","Stewart","Edwards",
+            "Morris","Rogers","Cook","Murphy","Bailey","Cooper","Reed","Howard","Ward","Foster"
         };
 
                 string[] officeHours = {
-                "Monday 09:00-11:00, Wednesday 13:00-15:00",
-                "Tuesday 10:00-12:00, Thursday 14:00-16:00",
-                "Wednesday 09:00-11:00, Friday 10:00-12:00",
-                "Monday 14:00-16:00, Thursday 09:00-11:00",
-                "Tuesday 13:00-15:00, Friday 09:00-11:00"
-                };
+            "Monday 09:00-11:00, Wednesday 13:00-15:00",
+            "Tuesday 10:00-12:00, Thursday 14:00-16:00",
+            "Wednesday 09:00-11:00, Friday 10:00-12:00",
+            "Monday 14:00-16:00, Thursday 09:00-11:00",
+            "Tuesday 13:00-15:00, Friday 09:00-11:00"
+        };
 
                 // ---- 1. Senior Tutor ----
                 long seniorTutorUserId;
@@ -90,7 +95,8 @@ namespace Design_Develop_Deploy_Project.Tables
                 // ---- 2. Supervisors ----
                 var supervisorList = new List<(long supervisorId, string fullName)>();
                 var supNames = new (string, string)[] {
-            ("Emily", "Zhang"), ("David", "Patel"), ("Rachel", "Hughes"), ("Michael", "Carter"), ("Anna", "Nguyen")
+            ("Emily", "Zhang"), ("David", "Patel"), ("Rachel", "Hughes"),
+            ("Michael", "Carter"), ("Anna", "Nguyen")
         };
 
                 foreach (var (first, last) in supNames)
@@ -127,8 +133,6 @@ namespace Design_Develop_Deploy_Project.Tables
 
                 // ---- 3. Students ----
                 var studentList = new List<(long studentId, long supervisorId, string name)>();
-
-                // Create mutable name pools for uniqueness
                 var availableMaleNames = new List<string>(maleNames);
                 var availableFemaleNames = new List<string>(femaleNames);
 
@@ -140,7 +144,6 @@ namespace Design_Develop_Deploy_Project.Tables
                         bool isFemale = random.NextDouble() < 0.5;
                         string first;
 
-                        // Choose unique first name
                         if (isFemale && availableFemaleNames.Count > 0)
                         {
                             int index = random.Next(availableFemaleNames.Count);
@@ -155,7 +158,6 @@ namespace Design_Develop_Deploy_Project.Tables
                         }
                         else
                         {
-                            // Fallback: if names run out, generate synthetic unique name
                             first = "Student" + random.Next(1000, 9999);
                         }
 
@@ -163,8 +165,9 @@ namespace Design_Develop_Deploy_Project.Tables
                         string email = $"{first.ToLower()}.{last.ToLower()}{random.Next(1000, 9999)}@hull.ac.uk";
                         string password = GeneratePassword(random);
 
-                        int score = random.Next(2, 10); // wellbeing_score from 2–9
-                        string lastUpdate = DateTime.Now.AddDays(-random.Next(0, 30)).ToString("yyyy-MM-dd HH:mm:ss");
+                        int score = random.Next(2, 10);
+                        string lastUpdate = DateTime.Now.AddDays(-random.Next(0, 30))
+                            .ToString("yyyy-MM-dd HH:mm:ss");
 
                         long userId;
                         using (var userCmd = new SQLiteCommand(
@@ -196,7 +199,7 @@ namespace Design_Develop_Deploy_Project.Tables
 
                 Console.WriteLine($"✅ Created {studentList.Count} students total.");
 
-                // ---- 4. Meetings (0–1 per student) ----
+                // ---- 4. Meetings (0–1 per student) WITH DEBUG ----
                 foreach (var (studentId, supervisorId, name) in studentList)
                 {
                     if (random.NextDouble() < 0.5)
@@ -220,6 +223,9 @@ namespace Design_Develop_Deploy_Project.Tables
                         }
 
                         Console.WriteLine($"🗓️ Meeting logged for {name} on {date:yyyy-MM-dd}");
+
+                        // 🔥 DEBUG LINE (IMPORTANT)
+                        Console.WriteLine($"[DEBUG] Inserted Meeting: date={date:yyyy-MM-dd}, start=\"{start}\", end=\"{end}\"");
                     }
                 }
 
@@ -227,10 +233,15 @@ namespace Design_Develop_Deploy_Project.Tables
             }
         }
 
-
         public static void WipeTable()
         {
-            string dbpath = "Project_database.db";
+            string dbpath = Path.GetFullPath(
+                Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Tables", "Project_database.db")
+            );
+
+            //Console.WriteLine("[DEBUG] WIPING DATABASE PATH: " + dbpath);
+            //Console.ReadKey();
+
             string connString = $"Data Source={dbpath};Version=3;";
 
             using (var conn = new SQLiteConnection(connString))
@@ -248,7 +259,7 @@ namespace Design_Develop_Deploy_Project.Tables
         ", conn))
                 {
                     clearCmd.ExecuteNonQuery();
-                    Console.WriteLine("🧹 Cleared all existing data from database tables.");
+                    Console.WriteLine("🧹 Cleared all existing data from REAL database tables.");
                 }
             }
         }

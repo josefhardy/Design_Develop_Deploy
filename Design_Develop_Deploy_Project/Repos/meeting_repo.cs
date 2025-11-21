@@ -10,11 +10,12 @@ public class MeetingRepository
 	public string _connectionString { get; set; }
 
     public MeetingRepository(string connectionString)
-	{
-		_connectionString = connectionString;
+    {
+        _connectionString = connectionString;
     }
 
-	public MeetingRepository() { }
+
+    public MeetingRepository() { }
 
     public bool AddMeeting(Meeting meeting)
     {

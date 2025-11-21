@@ -12,6 +12,9 @@ namespace Design_Develop_Deploy_Project.Tables
                 Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Tables", "Project_database.db")
             );
 
+            //Console.WriteLine("[DEBUG] DATABASE PATH: " + dbpath);
+            //Console.ReadKey();
+
             // Ensure folder exists
             Directory.CreateDirectory(Path.GetDirectoryName(dbpath));
 
