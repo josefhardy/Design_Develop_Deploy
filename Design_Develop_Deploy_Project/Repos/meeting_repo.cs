@@ -121,20 +121,41 @@ public class MeetingRepository
 
     private Meeting MapReaderToMeeting(SQLiteDataReader reader)
     {
+        // Parse full datetime values
+        DateTime meetingDateTime = DateTime.ParseExact(
+            reader["meeting_date"].ToString(),
+            "dd/MM/yyyy HH:mm:ss",
+            System.Globalization.CultureInfo.InvariantCulture
+        );
+
+        DateTime startDateTime = DateTime.ParseExact(
+            reader["start_time"].ToString(),
+            "dd/MM/yyyy HH:mm:ss",
+            System.Globalization.CultureInfo.InvariantCulture
+        );
+
+        DateTime endDateTime = DateTime.ParseExact(
+            reader["end_time"].ToString(),
+            "dd/MM/yyyy HH:mm:ss",
+            System.Globalization.CultureInfo.InvariantCulture
+        );
+
         return new Meeting
         {
             meeting_id = Convert.ToInt32(reader["meeting_id"]),
             student_id = Convert.ToInt32(reader["student_id"]),
             supervisor_id = Convert.ToInt32(reader["supervisor_id"]),
-            meeting_date = Convert.ToDateTime(reader["meeting_date"]),
-            start_time = TimeSpan.Parse(reader["start_time"].ToString()),
-            end_time = TimeSpan.Parse(reader["end_time"].ToString()),
+
+            meeting_date = meetingDateTime,
+            start_time = startDateTime.TimeOfDay,
+            end_time = endDateTime.TimeOfDay,
+
             notes = reader["notes"] == DBNull.Value ? null : reader["notes"].ToString(),
             created_at = Convert.ToDateTime(reader["created_at"]),
             updated_at = Convert.ToDateTime(reader["updated_at"])
-
         };
     }
+
 
     public List<Meeting> GetMeetingsBySupervisorId(int supervisor_id)
     {

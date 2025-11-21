@@ -40,8 +40,6 @@ public class SupervisorService
         {
             Console.WriteLine($"ID: {s.student_id}, Name: {s.first_name} {s.last_name}, Wellbeing: {s.wellbeing_score}/10");
         }
-
-        ConsoleHelper.Pause("Press any key to return to the main menu...");
     }
 
     public void ViewStudentDetails()
@@ -284,19 +282,14 @@ public class SupervisorService
                 }
                 else
                 {
-                    Console.WriteLine("\nReschedule cancelled. Returning to menu...");
+                    Console.WriteLine("\nReschedule cancelled.");
                 }
                 ConsoleHelper.Pause();
                 break;
 
             case 3:
-                Console.WriteLine("Returning to main menu...");
-                Thread.Sleep(1500);
                 return;
         }
-
-        Console.WriteLine("Returning to menu...");
-        Thread.Sleep(1500);
     }
 
     public void UpdateOfficeHours()

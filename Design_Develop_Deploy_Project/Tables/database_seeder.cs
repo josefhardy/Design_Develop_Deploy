@@ -266,7 +266,9 @@ namespace Design_Develop_Deploy_Project.Tables
 
         public static void PrintAllUsers()
         {
-            string dbpath = "Project_database.db";
+            string dbpath = Path.GetFullPath(
+                Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Tables", "Project_database.db")
+            );
             string connString = $"Data Source={dbpath};Version=3;";
 
             using (var conn = new SQLiteConnection(connString))
@@ -296,11 +298,11 @@ namespace Design_Develop_Deploy_Project.Tables
                         string role = reader.GetString(5);
 
                         Console.WriteLine("----------------------------------------------");
-                        Console.WriteLine($"🆔  User ID: {userId}");
-                        Console.WriteLine($"👤 Name: {firstName} {lastName}");
-                        Console.WriteLine($"📧 Email: {email}");
-                        Console.WriteLine($"🔑 Password: {password}");
-                        Console.WriteLine($"🎭 Role: {role}");
+                        Console.WriteLine($"User ID: {userId}");
+                        Console.WriteLine($"Name: {firstName} {lastName}");
+                        Console.WriteLine($"Email: {email}");
+                        Console.WriteLine($"Password: {password}");
+                        Console.WriteLine($"Role: {role}");
                     }
 
                     Console.WriteLine("----------------------------------------------");

@@ -88,7 +88,6 @@ public class SupervisorMenu
             catch (Exception ex)
             {
                 ConsoleHelper.PrintSection("Error", ex.Message);
-                ConsoleHelper.Pause("Press any key to return to the menu...");
             }
 
             if (!exit)

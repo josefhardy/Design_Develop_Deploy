@@ -103,7 +103,6 @@ public class StudentService
         if (availableSlots.Count == 0)
         {
             ConsoleHelper.PrintSection("No Available Slots", "No open slots in the next 2 weeks.");
-            ConsoleHelper.Pause();
             return;
         }
 
