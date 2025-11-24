@@ -9,11 +9,11 @@ class Program
     static void Main(string[] args) 
     {
         DatabaseInitializer.EnsureCreated();
-        //DatabaseSeeder.WipeTable();
-        //Thread.Sleep(2000);
-        //DatabaseSeeder.Seed();
-        //Thread.Sleep(3000);
-        //Console.Clear();
+        DatabaseSeeder.WipeTable();
+        Thread.Sleep(2000);
+        DatabaseSeeder.Seed();
+        Thread.Sleep(3000);
+        Console.Clear();
         DatabaseSeeder.PrintAllUsers();
         Console.ReadKey();
         string dbpath = Path.GetFullPath(

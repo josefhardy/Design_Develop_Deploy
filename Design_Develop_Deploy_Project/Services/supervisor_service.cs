@@ -13,7 +13,7 @@ public class SupervisorService
     private readonly MeetingRepository _meetingRepo;
     private readonly SupervisorRepository _supervisorRepo;
     private readonly InteractionRepository _interactionRepo;
-    private readonly Supervisor supervisor;
+    private  Supervisor supervisor;
     public SupervisorService(string connectionString, Supervisor _supervisor)
 	{
         _interactionRepo = new InteractionRepository(connectionString);
@@ -86,8 +86,6 @@ public class SupervisorService
     public void BookMeeting(Student student = null)
     {
         Console.Clear();
-
-        // ✅ new: create scheduler service to handle logic
         var scheduler = new MeetingScheduler(_meetingRepo, _supervisorRepo);
 
         // -----------------------------
@@ -96,114 +94,120 @@ public class SupervisorService
         if (student == null)
         {
             var students = _studentRepo.GetAllStudentsUnderSpecificSupervisor(supervisor.supervisor_id);
-            List<string> studentDetails = students
-                .Select(s => $"ID: {s.student_id} | Name: {s.first_name} {s.last_name}")
+            List<string> studentOptions = students
+                .Select(s => $"ID: {s.student_id} | {s.first_name} {s.last_name}")
                 .ToList();
 
-            int choice = ConsoleHelper.PromptForChoice(studentDetails, "Select a student to book a meeting with:");
+            int choice = ConsoleHelper.PromptForChoice(studentOptions, "Select a student to book a meeting with:");
             student = _studentRepo.GetStudentById(students[choice - 1].student_id);
         }
 
-        Console.WriteLine($"\nBooking meeting with {student.first_name} {student.last_name} (ID: {student.student_id})");
-        Console.WriteLine("======================================");
+        Console.WriteLine($"\nBooking a meeting with {student.first_name} {student.last_name}");
+        Console.WriteLine("========================================");
 
         // -----------------------------
-        // Step 2 – Get available slots
+        // Step 2 – Build day → slots map
         // -----------------------------
-        var availableSlots = new List<(DateTime start, DateTime end)>();
+        var slotsByDate = new Dictionary<DateTime, List<(DateTime start, DateTime end)>>();
 
         for (int i = 0; i < 14; i++)
         {
             DateTime date = DateTime.Today.AddDays(i);
-            if (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday)
+            if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
                 continue;
 
-            // ✅ new: use scheduler to fetch available slots
-            var slotsForThatDay = scheduler.FetchAvailableSlots(supervisor.supervisor_id, date);
-            availableSlots.AddRange(slotsForThatDay);
+            var slots = scheduler.FetchAvailableSlots(supervisor.supervisor_id, date);
+            if (slots.Count > 0)
+                slotsByDate[date.Date] = slots;
         }
 
-        availableSlots = availableSlots.OrderBy(s => s.start).ToList();
-
-        if (availableSlots.Count == 0)
+        if (slotsByDate.Count == 0)
         {
-            ConsoleHelper.PrintSection("No Available Slots", "No available meeting slots in the next 2 weeks.");
+            ConsoleHelper.PrintSection("❌ No Available Slots", "No valid meeting slots in the next 2 weeks.");
             ConsoleHelper.Pause();
             return;
         }
 
         // -----------------------------
-        // Step 3 – Let supervisor choose a slot
+        // Step 3 – Supervisor chooses a day
         // -----------------------------
-        var slotStrings = availableSlots
-            .Select(s => $"{s.start:ddd dd MMM HH:mm} – {s.end:HH:mm}")
+        var days = slotsByDate.Keys.OrderBy(d => d).ToList();
+        var dayOptions = days.Select(d => d.ToString("dddd dd MMM")).ToList();
+
+        int dayChoice = ConsoleHelper.PromptForChoice(dayOptions, "Choose a day:");
+        var chosenDate = days[dayChoice - 1];
+
+        // -----------------------------
+        // Step 4 – Choose a specific 30-minute slot
+        // -----------------------------
+        var daySlots = slotsByDate[chosenDate];
+        var slotOptions = daySlots
+            .Select(s => $"{s.start:HH:mm} – {s.end:HH:mm}")
             .ToList();
 
-        int slotChoice = ConsoleHelper.PromptForChoice(slotStrings, "Available Meeting Slots:");
-        var selectedSlot = availableSlots[slotChoice - 1];
+        int slotChoice = ConsoleHelper.PromptForChoice(slotOptions, "Choose a time slot:");
+        var chosenSlot = daySlots[slotChoice - 1];
 
+        // -----------------------------
+        // Step 5 – Additional meeting notes
+        // -----------------------------
         string notes = ConsoleHelper.AskForInput("Add meeting notes (optional)");
 
         Console.Clear();
         ConsoleHelper.PrintSection("Meeting Confirmation",
-            $"Date: {selectedSlot.start:dddd dd MMM}\n" +
-            $"Time: {selectedSlot.start:HH:mm} – {selectedSlot.end:HH:mm}\n" +
+            $"Date: {chosenSlot.start:dddd dd MMM}\n" +
+            $"Time: {chosenSlot.start:HH:mm} – {chosenSlot.end:HH:mm}\n" +
             $"Student: {student.first_name} {student.last_name}\n" +
             $"Supervisor: {supervisor.first_name} {supervisor.last_name}");
 
-        bool confirm = ConsoleHelper.GetYesOrNo("Confirm booking this meeting?");
+        bool confirm = ConsoleHelper.GetYesOrNo("Confirm this meeting?");
         if (!confirm)
         {
-            ConsoleHelper.PrintSection("Cancelled", "Meeting booking was cancelled.");
+            ConsoleHelper.PrintSection("Cancelled", "Meeting booking cancelled.");
             ConsoleHelper.Pause();
             return;
         }
 
         // -----------------------------
-        // Step 4 – Create meeting object
+        // Step 6 – Create meeting object
         // -----------------------------
         var meeting = new Meeting
         {
             student_id = student.student_id,
             supervisor_id = supervisor.supervisor_id,
-            meeting_date = selectedSlot.start.Date,
-            start_time = selectedSlot.start.TimeOfDay,
-            end_time = selectedSlot.end.TimeOfDay,
+            meeting_date = chosenSlot.start.Date,
+            start_time = chosenSlot.start.TimeOfDay,
+            end_time = chosenSlot.end.TimeOfDay,
             notes = notes
         };
 
         // -----------------------------
-        // Step 5 – Validate before saving
+        // Step 7 – Validate + Save
         // -----------------------------
-        if (!scheduler.ValidateMeeting(meeting, out string validationMessage))
+        if (!scheduler.ValidateMeeting(meeting, out string message))
         {
-            ConsoleHelper.PrintSection("❌ Invalid Meeting", validationMessage);
+            ConsoleHelper.PrintSection("❌ Invalid Meeting", message);
             ConsoleHelper.Pause();
             return;
         }
 
-        // -----------------------------
-        // Step 6 – Save meeting
-        // -----------------------------
         bool success = _meetingRepo.AddMeeting(meeting);
 
         if (success)
         {
-            // Log interaction for metrics
             _interactionRepo.RecordSupervisorInteraction(supervisor.supervisor_id, student.student_id, "meeting");
 
             ConsoleHelper.PrintSection("✅ Success",
-                $"Meeting booked for {selectedSlot.start:dddd dd MMM HH:mm} – {selectedSlot.end:HH:mm}");
+                $"Meeting booked for {chosenSlot.start:dddd dd MMM HH:mm} – {chosenSlot.end:HH:mm}");
         }
         else
         {
-            ConsoleHelper.PrintSection("❌ Error",
-                "Could not book the meeting. It may have been taken or an error occurred.");
+            ConsoleHelper.PrintSection("❌ Error", "Meeting could not be saved.");
         }
 
         ConsoleHelper.Pause();
     }
-          
+
     public void ViewMeetings()
     {
         Console.Clear();
@@ -299,12 +303,14 @@ public class SupervisorService
         Console.WriteLine($"Supervisor: {supervisor.first_name} {supervisor.last_name}");
         Console.WriteLine("===========================================\n");
 
+        // Refresh supervisor info so we always show current hours
+        supervisor = _supervisorRepo.GetSupervisorById(supervisor.supervisor_id);
+
         Console.WriteLine($"Current office hours: {supervisor.office_hours}");
+
         bool update = ConsoleHelper.GetYesOrNo("Would you like to update your office hours? Choose no to continue with the current hours");
         if (!update)
         {
-            Console.WriteLine("Returning to menu...");
-            Thread.Sleep(1500);
             return;
         }
 
@@ -395,14 +401,13 @@ public class SupervisorService
         {
             string formattedHours = string.Join(",", newOfficeHours);
             _supervisorRepo.UpdateOfficeHours(supervisor.supervisor_id, formattedHours);
-            Console.WriteLine("\n✅ Office hours updated successfully!");
+            Console.WriteLine("\nOffice hours updated successfully!");
         }
         else
         {
             Console.WriteLine("\nChanges discarded.");
         }
 
-        ConsoleHelper.Pause("Press any key to return to the main menu...");
     }
 
     public void ViewPerformanceMetrics()

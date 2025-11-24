@@ -17,7 +17,6 @@ namespace Design_Develop_Deploy_Project.Tables
             string connString = $"Data Source={dbpath};Version=3;";
             Console.WriteLine("[DEBUG] Seeder using DB: " + dbpath);
 
-
             using (var conn = new SQLiteConnection(connString))
             {
                 conn.Open();
@@ -37,10 +36,8 @@ namespace Design_Develop_Deploy_Project.Tables
                 }
 
                 Console.WriteLine("🌱 Seeding database with realistic university data...");
-
                 var random = new Random();
 
-                // ---- Helper for unique passwords ----
                 static string GeneratePassword(Random random, int length = 10)
                 {
                     const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -48,38 +45,20 @@ namespace Design_Develop_Deploy_Project.Tables
                         .Select(s => s[random.Next(s.Length)]).ToArray());
                 }
 
-                // ---- Data Sources ----
-                string[] maleNames = {
-            "James","Liam","Noah","Ethan","Oliver","Lucas","Henry","Mason","Jack","William",
-            "Alexander","Benjamin","Jacob","Logan","Elijah","Daniel","Matthew","Aiden","Samuel","Owen",
-            "Caleb","Nathan","Isaac","Joseph","Ryan","Adam","Andrew","Aaron","Connor","Dylan"
-        };
-
-                string[] femaleNames = {
-            "Emma","Olivia","Ava","Sophia","Isabella","Mia","Charlotte","Amelia","Harper","Ella",
-            "Grace","Lily","Abigail","Emily","Aria","Chloe","Scarlett","Victoria","Zoe","Layla",
-            "Hannah","Nora","Evelyn","Lucy","Sofia","Leah","Sarah","Maya","Hazel","Claire"
-        };
-
-                string[] lastNames = {
-            "Smith","Johnson","Brown","Williams","Jones","Taylor","Davis","Clark","Lee","Harris",
-            "Patel","Nguyen","Zhang","Singh","Wilson","Anderson","Thomas","Moore","Martin","Thompson",
-            "White","Lopez","King","Scott","Hill","Green","Adams","Baker","Wright","Nelson",
-            "Mitchell","Campbell","Carter","Roberts","Turner","Phillips","Evans","Collins","Stewart","Edwards",
-            "Morris","Rogers","Cook","Murphy","Bailey","Cooper","Reed","Howard","Ward","Foster"
-        };
-
-                string[] officeHours = {
-            "Monday 09:00-11:00, Wednesday 13:00-15:00",
-            "Tuesday 10:00-12:00, Thursday 14:00-16:00",
-            "Wednesday 09:00-11:00, Friday 10:00-12:00",
+                string[] officeHoursSamples = {
+            "Monday 09:00-11:00, Thursday 13:00-15:00",
+            "Tuesday 10:00-12:00, Friday 09:00-11:00",
+            "Wednesday 09:00-11:00, Friday 14:00-16:00",
             "Monday 14:00-16:00, Thursday 09:00-11:00",
-            "Tuesday 13:00-15:00, Friday 09:00-11:00"
+            "Tuesday 13:00-15:00, Thursday 10:00-12:00"
         };
 
-                // ---- 1. Senior Tutor ----
+                // ----------------------
+                // 1. Senior Tutor
+                // ----------------------
                 long seniorTutorUserId;
                 string tutorPass = GeneratePassword(random);
+
                 using (var cmd = new SQLiteCommand(
                     "INSERT INTO Users (first_name, last_name, email, password, role) VALUES (@f, @l, @e, @p, 'senior_tutor'); SELECT last_insert_rowid();", conn))
                 {
@@ -90,10 +69,13 @@ namespace Design_Develop_Deploy_Project.Tables
                     seniorTutorUserId = (long)cmd.ExecuteScalar();
                 }
 
-                Console.WriteLine($"👩‍🏫 Senior Tutor: Prof. Sarah Thompson created (Password: {tutorPass})");
+                Console.WriteLine($"👩‍🏫 Senior Tutor created — Password: {tutorPass}");
 
-                // ---- 2. Supervisors ----
-                var supervisorList = new List<(long supervisorId, string fullName)>();
+                // ----------------------
+                // 2. Supervisors
+                // ----------------------
+                var supervisorList = new List<(long supervisorId, string fullName, string officeHours)>();
+
                 var supNames = new (string, string)[] {
             ("Emily", "Zhang"), ("David", "Patel"), ("Rachel", "Hughes"),
             ("Michael", "Carter"), ("Anna", "Nguyen")
@@ -102,7 +84,7 @@ namespace Design_Develop_Deploy_Project.Tables
                 foreach (var (first, last) in supNames)
                 {
                     string email = $"{first.ToLower()}.{last.ToLower()}@hull.ac.uk";
-                    string office = officeHours[random.Next(officeHours.Length)];
+                    string officeHours = officeHoursSamples[random.Next(officeHoursSamples.Length)];
                     string password = GeneratePassword(random);
 
                     long userId;
@@ -118,48 +100,40 @@ namespace Design_Develop_Deploy_Project.Tables
 
                     long supervisorId;
                     using (var supCmd = new SQLiteCommand(
-                        @"INSERT INTO Supervisors (user_id, last_office_hours_update, last_wellbeing_check, office_hours) 
-                  VALUES (@u, date('now'), date('now'), @o); 
+                        @"INSERT INTO Supervisors (user_id, office_hours, last_office_hours_update, last_wellbeing_check) 
+                  VALUES (@u, @o, date('now'), date('now')); 
                   SELECT last_insert_rowid();", conn))
                     {
                         supCmd.Parameters.AddWithValue("@u", userId);
-                        supCmd.Parameters.AddWithValue("@o", office);
+                        supCmd.Parameters.AddWithValue("@o", officeHours);
                         supervisorId = (long)supCmd.ExecuteScalar();
                     }
 
-                    supervisorList.Add((supervisorId, $"{first} {last}"));
-                    Console.WriteLine($"🧑‍🏫 Supervisor: Dr. {first} {last}, Office hours: {office}, Password: {password}");
+                    supervisorList.Add((supervisorId, $"{first} {last}", officeHours));
+
+                    Console.WriteLine($"🧑‍🏫 Supervisor created: {first} {last} | Office Hours: {officeHours} | Password: {password}");
                 }
 
-                // ---- 3. Students ----
-                var studentList = new List<(long studentId, long supervisorId, string name)>();
-                var availableMaleNames = new List<string>(maleNames);
-                var availableFemaleNames = new List<string>(femaleNames);
+                // ----------------------
+                // 3. Students
+                // ----------------------
+                var maleNames = new List<string> { "James", "Liam", "Noah", "Ethan", "Oliver", "Lucas", "Henry", "Mason", "Jack", "William" };
+                var femaleNames = new List<string> { "Emma", "Olivia", "Ava", "Sophia", "Isabella", "Mia", "Charlotte", "Amelia", "Harper", "Ella" };
+                string[] lastNames = { "Smith", "Johnson", "Brown", "Jones", "Taylor", "Wilson", "Clark", "Lee", "Harris", "Lopez" };
 
-                foreach (var (supervisorId, supervisorName) in supervisorList)
+                var studentList = new List<(long studentId, long supervisorId)>();
+
+                foreach (var sup in supervisorList)
                 {
                     int numStudents = random.Next(5, 8);
+
                     for (int i = 0; i < numStudents; i++)
                     {
                         bool isFemale = random.NextDouble() < 0.5;
-                        string first;
 
-                        if (isFemale && availableFemaleNames.Count > 0)
-                        {
-                            int index = random.Next(availableFemaleNames.Count);
-                            first = availableFemaleNames[index];
-                            availableFemaleNames.RemoveAt(index);
-                        }
-                        else if (!isFemale && availableMaleNames.Count > 0)
-                        {
-                            int index = random.Next(availableMaleNames.Count);
-                            first = availableMaleNames[index];
-                            availableMaleNames.RemoveAt(index);
-                        }
-                        else
-                        {
-                            first = "Student" + random.Next(1000, 9999);
-                        }
+                        string first = isFemale && femaleNames.Count > 0
+                            ? femaleNames[random.Next(femaleNames.Count)]
+                            : maleNames[random.Next(maleNames.Count)];
 
                         string last = lastNames[random.Next(lastNames.Length)];
                         string email = $"{first.ToLower()}.{last.ToLower()}{random.Next(1000, 9999)}@hull.ac.uk";
@@ -186,52 +160,79 @@ namespace Design_Develop_Deploy_Project.Tables
                       VALUES (@u, @s, @w, @d); SELECT last_insert_rowid();", conn))
                         {
                             studCmd.Parameters.AddWithValue("@u", userId);
-                            studCmd.Parameters.AddWithValue("@s", supervisorId);
+                            studCmd.Parameters.AddWithValue("@s", sup.supervisorId);
                             studCmd.Parameters.AddWithValue("@w", score);
                             studCmd.Parameters.AddWithValue("@d", lastUpdate);
                             studentId = (long)studCmd.ExecuteScalar();
                         }
 
-                        studentList.Add((studentId, supervisorId, $"{first} {last}"));
-                        Console.WriteLine($"🎓 Student: {first} {last}, Email: {email}, Password: {password}, Wellbeing score: {score} (updated {lastUpdate}) under {supervisorName}");
+                        studentList.Add((studentId, sup.supervisorId));
+
+                        Console.WriteLine($"🎓 Student created: {first} {last} under {sup.fullName}");
                     }
                 }
 
-                Console.WriteLine($"✅ Created {studentList.Count} students total.");
+                Console.WriteLine($"✅ Created {studentList.Count} students.");
 
-                // ---- 4. Meetings (0–1 per student) WITH DEBUG ----
-                foreach (var (studentId, supervisorId, name) in studentList)
+                // ----------------------
+                // 4. Meetings — FIXED
+                // ----------------------
+                foreach (var (studentId, supervisorId) in studentList)
                 {
-                    if (random.NextDouble() < 0.5)
+                    if (random.NextDouble() >= 0.5)
+                        continue;
+
+                    var sup = supervisorList.First(s => s.supervisorId == supervisorId);
+
+                    var blocks = sup.officeHours
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                        .Select(b => b.Trim())
+                        .ToList();
+
+                    string chosenBlock = blocks[random.Next(blocks.Count)];
+
+                    var parts = chosenBlock.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    string dayName = parts[0];
+                    string timeRange = parts[1];
+
+                    var times = timeRange.Split('-');
+                    TimeSpan blockStart = TimeSpan.Parse(times[0]);
+                    TimeSpan blockEnd = TimeSpan.Parse(times[1]);
+
+                    int slotCount = (int)((blockEnd - blockStart).TotalMinutes / 30);
+                    int slotIndex = random.Next(slotCount);
+
+                    TimeSpan startTime = blockStart.Add(TimeSpan.FromMinutes(slotIndex * 30));
+                    TimeSpan endTime = startTime.Add(TimeSpan.FromMinutes(30));
+
+                    // Pick a seeded date matching the office-hour day
+                    DateTime date;
+                    do
                     {
-                        DateTime date = DateTime.Now.AddDays(-random.Next(0, 30));
-                        string start = "10:00";
-                        string end = "11:00";
-                        string note = "Progress check and wellbeing discussion.";
-
-                        using (var meetCmd = new SQLiteCommand(
-                            @"INSERT INTO Meetings (student_id, supervisor_id, meeting_date, start_time, end_time, notes)
-                      VALUES (@stu, @sup, @d, @st, @et, @n);", conn))
-                        {
-                            meetCmd.Parameters.AddWithValue("@stu", studentId);
-                            meetCmd.Parameters.AddWithValue("@sup", supervisorId);
-                            meetCmd.Parameters.AddWithValue("@d", date.ToString("yyyy-MM-dd"));
-                            meetCmd.Parameters.AddWithValue("@st", start);
-                            meetCmd.Parameters.AddWithValue("@et", end);
-                            meetCmd.Parameters.AddWithValue("@n", note);
-                            meetCmd.ExecuteNonQuery();
-                        }
-
-                        Console.WriteLine($"🗓️ Meeting logged for {name} on {date:yyyy-MM-dd}");
-
-                        // 🔥 DEBUG LINE (IMPORTANT)
-                        Console.WriteLine($"[DEBUG] Inserted Meeting: date={date:yyyy-MM-dd}, start=\"{start}\", end=\"{end}\"");
+                        date = DateTime.Now.AddDays(-random.Next(0, 30));
                     }
+                    while (date.DayOfWeek.ToString() != dayName);
+
+                    using (var meetCmd = new SQLiteCommand(
+                        @"INSERT INTO Meetings (student_id, supervisor_id, meeting_date, start_time, end_time, notes)
+                  VALUES (@stu, @sup, @d, @st, @et, @n);", conn))
+                    {
+                        meetCmd.Parameters.AddWithValue("@stu", studentId);
+                        meetCmd.Parameters.AddWithValue("@sup", supervisorId);
+                        meetCmd.Parameters.AddWithValue("@d", date.ToString("yyyy-MM-dd"));
+                        meetCmd.Parameters.AddWithValue("@st", startTime.ToString(@"hh\:mm"));
+                        meetCmd.Parameters.AddWithValue("@et", endTime.ToString(@"hh\:mm"));
+                        meetCmd.Parameters.AddWithValue("@n", "Progress check and wellbeing discussion.");
+                        meetCmd.ExecuteNonQuery();
+                    }
+
+                    Console.WriteLine($"🗓️ Meeting seeded for Student {studentId} on {date:yyyy-MM-dd} {startTime}-{endTime}");
                 }
 
-                Console.WriteLine("🎉 Realistic database seeding completed!");
+                Console.WriteLine("🎉 Seeder Completed Successfully!");
             }
         }
+
 
         public static void WipeTable()
         {
@@ -287,20 +288,20 @@ namespace Design_Develop_Deploy_Project.Tables
                 conn.Open();
 
                 string query = @"
-            SELECT 
-                u.user_id,
-                u.first_name,
-                u.last_name,
-                u.email,
-                u.password,
-                u.role,
-                s.supervisor_id,
-                st.student_id
-            FROM Users u
-            LEFT JOIN Supervisors s ON s.supervisor_id = u.user_id
-            LEFT JOIN Students st ON st.student_id = u.user_id
-            ORDER BY u.user_id;
-        ";
+        SELECT 
+            u.user_id,
+            u.first_name,
+            u.last_name,
+            u.email,
+            u.password,
+            u.role,
+            s.supervisor_id AS supervisor_record_id,
+            st.student_id AS student_record_id
+        FROM Users u
+        LEFT JOIN Supervisors s ON s.user_id = u.user_id
+        LEFT JOIN Students st ON st.user_id = u.user_id
+        ORDER BY u.user_id;
+    ";
 
                 using (var cmd = new SQLiteCommand(query, conn))
                 using (var reader = cmd.ExecuteReader())
@@ -324,9 +325,8 @@ namespace Design_Develop_Deploy_Project.Tables
                         string password = reader.GetString(4);
                         string role = reader.GetString(5);
 
-                        // Nullable IDs
-                        object supervisorIdObj = reader["supervisor_id"];
-                        object studentIdObj = reader["student_id"];
+                        object supervisorIdObj = reader["supervisor_record_id"];
+                        object studentIdObj = reader["student_record_id"];
 
                         Console.WriteLine("----------------------------------------------");
                         Console.WriteLine($"User ID: {userId}");
@@ -354,6 +354,7 @@ namespace Design_Develop_Deploy_Project.Tables
                 }
             }
         }
+
 
     }
 }

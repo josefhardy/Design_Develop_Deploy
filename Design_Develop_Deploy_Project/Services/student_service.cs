@@ -88,8 +88,9 @@ public class StudentService
 
         Supervisor supervisor = _supervisorRepo.GetSupervisorById(student.supervisor_id);
 
-        // 🔹 Get available slots via the new scheduler
-        var availableSlots = new List<(DateTime start, DateTime end)>();
+        // 1) Build a map: date -> list of slots
+        var slotsByDate = new Dictionary<DateTime, List<(DateTime start, DateTime end)>>();
+
         for (int i = 0; i < 14; i++)
         {
             DateTime date = DateTime.Today.AddDays(i);
@@ -97,21 +98,35 @@ public class StudentService
                 continue;
 
             var slotsForDay = scheduler.FetchAvailableSlots(supervisor.supervisor_id, date);
-            availableSlots.AddRange(slotsForDay);
+            if (slotsForDay.Count > 0)
+            {
+                slotsByDate[date.Date] = slotsForDay;
+            }
         }
 
-        if (availableSlots.Count == 0)
+        if (slotsByDate.Count == 0)
         {
             ConsoleHelper.PrintSection("No Available Slots", "No open slots in the next 2 weeks.");
             return;
         }
 
-        var slotOptions = availableSlots
-            .Select(s => $"{s.start:ddd dd MMM HH:mm} – {s.end:HH:mm}")
+        // 2) Let student choose a day
+        var days = slotsByDate.Keys.OrderBy(d => d).ToList();
+        var dayOptions = days
+            .Select(d => d.ToString("ddd dd MMM"))
+            .ToList();
+
+        int dayChoice = ConsoleHelper.PromptForChoice(dayOptions, "Choose a day with office hours:");
+        var chosenDate = days[dayChoice - 1];
+
+        // 3) Let student choose a 30-min slot on that day
+        var daySlots = slotsByDate[chosenDate];
+        var slotOptions = daySlots
+            .Select(s => $"{s.start:HH:mm} – {s.end:HH:mm}")
             .ToList();
 
         int slotChoice = ConsoleHelper.PromptForChoice(slotOptions, "Choose a meeting slot:");
-        var chosenSlot = availableSlots[slotChoice - 1];
+        var chosenSlot = daySlots[slotChoice - 1];
 
         string notes = ConsoleHelper.AskForInput("Add meeting notes (optional)");
 
@@ -125,24 +140,25 @@ public class StudentService
             notes = notes
         };
 
-        // 🔹 Validate meeting before saving
         if (!scheduler.ValidateMeeting(meeting, out string message))
         {
             ConsoleHelper.PrintSection("Invalid Meeting", message);
-            ConsoleHelper.Pause();
             return;
         }
 
         bool success = _meetingRepo.AddMeeting(meeting);
         if (success)
         {
-            ConsoleHelper.PrintSection("Success", "Meeting booked successfully!");
+            ConsoleHelper.PrintSection("Success",
+                $"Meeting booked for {chosenSlot.start:dddd dd MMM HH:mm} – {chosenSlot.end:HH:mm}");
         }
         else
         {
             ConsoleHelper.PrintSection("Error", "Failed to book the meeting.");
         }
+
     }
+
 
     public void ViewMeetings()
     {
@@ -161,11 +177,6 @@ public class StudentService
             {
                 BookMeeting();
             }
-            else
-            {
-                Console.WriteLine("\nReturning to menu...");
-                Thread.Sleep(1500);
-            }
             return;
         }
 
@@ -173,7 +184,7 @@ public class StudentService
 
         Console.WriteLine("=========== Current Meeting ===========");
         Console.WriteLine($"Date: {meeting.meeting_date:dddd dd MMM}");
-        Console.WriteLine($"Time: {meeting.start_time:hh\\:mm} – {meeting.end_time:hh\\:mm}");
+        Console.WriteLine($"Time: {meeting.start_time} – {meeting.end_time}");
         Console.WriteLine($"Supervisor: {supervisor.first_name} {supervisor.last_name}");
         Console.WriteLine($"Notes: {(string.IsNullOrWhiteSpace(meeting.notes) ? "None" : meeting.notes)}");
         Console.WriteLine("=======================================\n");
@@ -202,7 +213,7 @@ public class StudentService
             }
             else
             {
-                Console.WriteLine("\nReschedule cancelled. Returning to menu...");
+                Console.WriteLine("\nReschedule cancelled.");
                 Thread.Sleep(1500);
             }
         }
@@ -218,14 +229,6 @@ public class StudentService
             {
                 Console.WriteLine("\nMeeting cancellation aborted.");
             }
-
-            Console.WriteLine("Returning to menu...");
-            Thread.Sleep(1500);
-        }
-        else
-        {
-            Console.WriteLine("\nReturning to menu...");
-            Thread.Sleep(1500);
         }
     }
 

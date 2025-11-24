@@ -12,52 +12,79 @@ public class SupervisorRepository
         _connectionString = connectionString;
     }
 
-    public Supervisor GetSupervisorById(int Supervisor_id)
+    public Supervisor GetSupervisorById(int supervisorId)
     {
-        if (Supervisor_id <= 0) { return null; }
+        if (supervisorId <= 0) { return null; }
 
         using (var conn = new SQLiteConnection(_connectionString))
         {
             conn.Open();
-            string query = @"SELECT s.supervisor_id,
-							u.user_id, u.first_name, u.last_name, u.email, u.password, u.role
-							FROM Supervisors s
-							JOIN Users u on s.user_id =  u.user_id
-							WHERE s.supervisor_id = @Supervisor_id";
+
+            string query = @"
+            SELECT 
+                s.supervisor_id,
+                s.user_id,
+                s.office_hours,
+                s.last_office_hours_update,
+                s.last_wellbeing_check,
+                s.meetings_booked_this_month,
+                s.wellbeing_checks_this_month,
+                u.first_name,
+                u.last_name,
+                u.email,
+                u.password,
+                u.role
+            FROM Supervisors s
+            JOIN Users u ON s.user_id = u.user_id
+            WHERE s.supervisor_id = @SupervisorId";
 
             using (var cmd = new SQLiteCommand(query, conn))
             {
-                cmd.Parameters.AddWithValue("@Supervisor_id", Supervisor_id);
+                cmd.Parameters.AddWithValue("@SupervisorId", supervisorId);
+
                 using (var reader = cmd.ExecuteReader())
                 {
                     if (reader.Read())
                     {
                         return MapReaderToSupervisor(reader);
                     }
-                    else
-                    {
-                        return null;
-                    }
                 }
             }
         }
+
         return null;
     }
 
-    public Supervisor GetSupervisorByEmail(string Email)
+    public Supervisor GetSupervisorByEmail(string email)
     {
-        if (string.IsNullOrWhiteSpace(Email)) { return null; }
+        if (string.IsNullOrWhiteSpace(email)) { return null; }
+
         using (var conn = new SQLiteConnection(_connectionString))
         {
             conn.Open();
-            string query = @"SELECT s.supervisor_id,
-							u.user_id, u.first_name, u.last_name, u.email, u.password, u.role
-							FROM Supervisors s
-							JOIN Users u on s.user_id =  u.user_id
-							WHERE LOWER(u.email) = @Email";
+
+            string query = @"
+            SELECT 
+                s.supervisor_id,
+                s.user_id,
+                s.office_hours,
+                s.last_office_hours_update,
+                s.last_wellbeing_check,
+                s.meetings_booked_this_month,
+                s.wellbeing_checks_this_month,
+                u.first_name,
+                u.last_name,
+                u.email,
+                u.password,
+                u.role
+            FROM Supervisors s
+            JOIN Users u ON s.user_id = u.user_id
+            WHERE LOWER(u.email) = @Email";
+
             using (var cmd = new SQLiteCommand(query, conn))
             {
-                cmd.Parameters.AddWithValue("@Email", Email.Trim().ToLower());
+                cmd.Parameters.AddWithValue("@Email", email.Trim().ToLower());
+
                 using (var reader = cmd.ExecuteReader())
                 {
                     if (reader.Read())
@@ -66,41 +93,45 @@ public class SupervisorRepository
                     }
                 }
             }
-            return null;
         }
+
+        return null;
     }
 
     public List<Supervisor> GetAllSupervisors()
     {
         var supervisors = new List<Supervisor>();
 
-        try
+        using (var conn = new SQLiteConnection(_connectionString))
         {
-            using (var conn = new SQLiteConnection(_connectionString))
+            conn.Open();
+
+            string query = @"
+            SELECT 
+                s.supervisor_id,
+                s.user_id,
+                s.office_hours,
+                s.last_office_hours_update,
+                s.last_wellbeing_check,
+                s.meetings_booked_this_month,
+                s.wellbeing_checks_this_month,
+                u.first_name,
+                u.last_name,
+                u.email,
+                u.password,
+                u.role
+            FROM Supervisors s
+            JOIN Users u ON s.user_id = u.user_id";
+
+            using (var cmd = new SQLiteCommand(query, conn))
+            using (var reader = cmd.ExecuteReader())
             {
-                conn.Open();
-
-                string query = @"
-                SELECT supervisor_id, user_id, last_office_hours_update, 
-                       last_wellbeing_check, office_hours, 
-                       meetings_booked_this_month, wellbeing_checks_this_month
-                FROM Supervisors";
-
-                using (var cmd = new SQLiteCommand(query, conn))
-                using (var reader = cmd.ExecuteReader())
+                while (reader.Read())
                 {
-                    while (reader.Read())
-                    {
-                        supervisors.Add(MapReaderToSupervisor(reader));
-                    }
+                    supervisors.Add(MapReaderToSupervisor(reader));
                 }
             }
         }
-        catch
-        {
-            throw;
-        }
-
 
         return supervisors;
     }
@@ -191,8 +222,17 @@ public class SupervisorRepository
     {
         return new Supervisor
         {
-            user_id = Convert.ToInt32(reader["user_id"]),
             supervisor_id = Convert.ToInt32(reader["supervisor_id"]),
+            user_id = Convert.ToInt32(reader["user_id"]),
+
+            // Supervisor-specific fields
+            office_hours = reader["office_hours"] == DBNull.Value ? null : reader["office_hours"].ToString(),
+            last_office_hours_update = reader["last_office_hours_update"] == DBNull.Value ? null : Convert.ToDateTime(reader["last_office_hours_update"]),
+            last_wellbeing_check = reader["last_wellbeing_check"] == DBNull.Value ? null : Convert.ToDateTime(reader["last_wellbeing_check"]),
+            meetings_booked_this_month = reader["meetings_booked_this_month"] == DBNull.Value ? 0 : Convert.ToInt32(reader["meetings_booked_this_month"]),
+            wellbeing_checks_this_month = reader["wellbeing_checks_this_month"] == DBNull.Value ? 0 : Convert.ToInt32(reader["wellbeing_checks_this_month"]),
+
+            // User fields
             first_name = reader["first_name"].ToString(),
             last_name = reader["last_name"].ToString(),
             email = reader["email"].ToString(),
@@ -200,6 +240,7 @@ public class SupervisorRepository
             role = reader["role"].ToString(),
         };
     }
+
 }
 
 
