@@ -21,27 +21,25 @@ public class Validators
 
             if (user == null)
             {
-                ConsoleHelper.PrintSection("⚠️  Login Failed", "Email does not exist in this system.");
+                ConsoleHelper.PrintSection("Login Failed", "Email does not exist in this system.");
                 Thread.Sleep(2000);
                 return null;
             }
 
             if (password == user.password)
             {
-                ConsoleHelper.PrintSection("✅ Success", "User login successful!");
-                Thread.Sleep(2000);
                 return user;
             }
             else
             {
-                ConsoleHelper.PrintSection("❌ Incorrect Password", "The password you entered is incorrect.");
+                ConsoleHelper.PrintSection("Incorrect Password", "The password you entered is incorrect.");
                 Thread.Sleep(2000);
                 return null;
             }
         }
         catch (Exception ex)
         {
-            ConsoleHelper.PrintSection("❌ Database Error", ex.Message);
+            ConsoleHelper.PrintSection("Database Error", ex.Message);
             ConsoleHelper.Pause("Press any key to return to login...");
             return null;
         }

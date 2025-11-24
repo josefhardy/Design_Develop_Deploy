@@ -239,9 +239,6 @@ namespace Design_Develop_Deploy_Project.Tables
                 Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Tables", "Project_database.db")
             );
 
-            //Console.WriteLine("[DEBUG] WIPING DATABASE PATH: " + dbpath);
-            //Console.ReadKey();
-
             string connString = $"Data Source={dbpath};Version=3;";
 
             using (var conn = new SQLiteConnection(connString))
@@ -251,6 +248,7 @@ namespace Design_Develop_Deploy_Project.Tables
                 using (var pragmaCommand = new SQLiteCommand("PRAGMA foreign_keys = ON;", conn))
                     pragmaCommand.ExecuteNonQuery();
 
+                // 1️⃣ Clear all data from tables
                 using (var clearCmd = new SQLiteCommand(@"
             DELETE FROM Meetings;
             DELETE FROM Students;
@@ -261,8 +259,21 @@ namespace Design_Develop_Deploy_Project.Tables
                     clearCmd.ExecuteNonQuery();
                     Console.WriteLine("🧹 Cleared all existing data from REAL database tables.");
                 }
+
+                // 2️⃣ Reset AUTOINCREMENT counters
+                using (var resetSeqCmd = new SQLiteCommand(@"
+            DELETE FROM sqlite_sequence WHERE name='Meetings';
+            DELETE FROM sqlite_sequence WHERE name='Students';
+            DELETE FROM sqlite_sequence WHERE name='Supervisors';
+            DELETE FROM sqlite_sequence WHERE name='Users';
+        ", conn))
+                {
+                    resetSeqCmd.ExecuteNonQuery();
+                    Console.WriteLine("🔄 Reset AUTOINCREMENT counters for all tables.");
+                }
             }
         }
+
 
         public static void PrintAllUsers()
         {
@@ -275,11 +286,27 @@ namespace Design_Develop_Deploy_Project.Tables
             {
                 conn.Open();
 
-                using (var cmd = new SQLiteCommand("SELECT user_id, first_name, last_name, email, password, role FROM Users ORDER BY user_id;", conn))
+                string query = @"
+            SELECT 
+                u.user_id,
+                u.first_name,
+                u.last_name,
+                u.email,
+                u.password,
+                u.role,
+                s.supervisor_id,
+                st.student_id
+            FROM Users u
+            LEFT JOIN Supervisors s ON s.supervisor_id = u.user_id
+            LEFT JOIN Students st ON st.student_id = u.user_id
+            ORDER BY u.user_id;
+        ";
+
+                using (var cmd = new SQLiteCommand(query, conn))
                 using (var reader = cmd.ExecuteReader())
                 {
                     Console.WriteLine("==============================================");
-                    Console.WriteLine("📋 USERS TABLE CONTENTS");
+                    Console.WriteLine("USERS TABLE CONTENTS");
                     Console.WriteLine("==============================================");
 
                     if (!reader.HasRows)
@@ -297,19 +324,36 @@ namespace Design_Develop_Deploy_Project.Tables
                         string password = reader.GetString(4);
                         string role = reader.GetString(5);
 
+                        // Nullable IDs
+                        object supervisorIdObj = reader["supervisor_id"];
+                        object studentIdObj = reader["student_id"];
+
                         Console.WriteLine("----------------------------------------------");
                         Console.WriteLine($"User ID: {userId}");
                         Console.WriteLine($"Name: {firstName} {lastName}");
                         Console.WriteLine($"Email: {email}");
                         Console.WriteLine($"Password: {password}");
                         Console.WriteLine($"Role: {role}");
+
+                        if (role == "supervisor")
+                        {
+                            int supervisorId = supervisorIdObj != DBNull.Value ? Convert.ToInt32(supervisorIdObj) : -1;
+                            Console.WriteLine($"Supervisor ID: {supervisorId}");
+                        }
+
+                        if (role == "student")
+                        {
+                            int studentId = studentIdObj != DBNull.Value ? Convert.ToInt32(studentIdObj) : -1;
+                            Console.WriteLine($"Student ID: {studentId}");
+                        }
                     }
 
                     Console.WriteLine("----------------------------------------------");
-                    Console.WriteLine("✅ All user records displayed successfully.");
+                    Console.WriteLine("All user records displayed successfully.");
                     Console.WriteLine("==============================================");
                 }
             }
         }
+
     }
 }
