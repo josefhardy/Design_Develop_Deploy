@@ -45,7 +45,8 @@ namespace Design_Develop_Deploy_Project.Tables
                         .Select(s => s[random.Next(s.Length)]).ToArray());
                 }
 
-                string[] officeHoursSamples = {
+                string[] officeHoursSamples =
+                {
             "Monday 09:00-11:00, Thursday 13:00-15:00",
             "Tuesday 10:00-12:00, Friday 09:00-11:00",
             "Wednesday 09:00-11:00, Friday 14:00-16:00",
@@ -60,7 +61,8 @@ namespace Design_Develop_Deploy_Project.Tables
                 string tutorPass = GeneratePassword(random);
 
                 using (var cmd = new SQLiteCommand(
-                    "INSERT INTO Users (first_name, last_name, email, password, role) VALUES (@f, @l, @e, @p, 'senior_tutor'); SELECT last_insert_rowid();", conn))
+                    "INSERT INTO Users (first_name, last_name, email, password, role) " +
+                    "VALUES (@f, @l, @e, @p, 'senior_tutor'); SELECT last_insert_rowid();", conn))
                 {
                     cmd.Parameters.AddWithValue("@f", "Sarah");
                     cmd.Parameters.AddWithValue("@l", "Thompson");
@@ -76,10 +78,14 @@ namespace Design_Develop_Deploy_Project.Tables
                 // ----------------------
                 var supervisorList = new List<(long supervisorId, string fullName, string officeHours)>();
 
-                var supNames = new (string, string)[] {
-            ("Emily", "Zhang"), ("David", "Patel"), ("Rachel", "Hughes"),
-            ("Michael", "Carter"), ("Anna", "Nguyen")
-        };
+                var supNames = new (string, string)[]
+                {
+            ("Emily", "Zhang"),
+            ("David", "Patel"),
+            ("Rachel", "Hughes"),
+            ("Michael", "Carter"),
+            ("Anna", "Nguyen")
+                };
 
                 foreach (var (first, last) in supNames)
                 {
@@ -89,7 +95,8 @@ namespace Design_Develop_Deploy_Project.Tables
 
                     long userId;
                     using (var userCmd = new SQLiteCommand(
-                        "INSERT INTO Users (first_name, last_name, email, password, role) VALUES (@f, @l, @e, @p, 'supervisor'); SELECT last_insert_rowid();", conn))
+                        "INSERT INTO Users (first_name, last_name, email, password, role) " +
+                        "VALUES (@f, @l, @e, @p, 'supervisor'); SELECT last_insert_rowid();", conn))
                     {
                         userCmd.Parameters.AddWithValue("@f", first);
                         userCmd.Parameters.AddWithValue("@l", last);
@@ -110,7 +117,6 @@ namespace Design_Develop_Deploy_Project.Tables
                     }
 
                     supervisorList.Add((supervisorId, $"{first} {last}", officeHours));
-
                     Console.WriteLine($"🧑‍🏫 Supervisor created: {first} {last} | Office Hours: {officeHours} | Password: {password}");
                 }
 
@@ -145,7 +151,8 @@ namespace Design_Develop_Deploy_Project.Tables
 
                         long userId;
                         using (var userCmd = new SQLiteCommand(
-                            "INSERT INTO Users (first_name, last_name, email, password, role) VALUES (@f, @l, @e, @p, 'student'); SELECT last_insert_rowid();", conn))
+                            "INSERT INTO Users (first_name, last_name, email, password, role) " +
+                            "VALUES (@f, @l, @e, @p, 'student'); SELECT last_insert_rowid();", conn))
                         {
                             userCmd.Parameters.AddWithValue("@f", first);
                             userCmd.Parameters.AddWithValue("@l", last);
@@ -167,7 +174,6 @@ namespace Design_Develop_Deploy_Project.Tables
                         }
 
                         studentList.Add((studentId, sup.supervisorId));
-
                         Console.WriteLine($"🎓 Student created: {first} {last} under {sup.fullName}");
                     }
                 }
@@ -175,22 +181,34 @@ namespace Design_Develop_Deploy_Project.Tables
                 Console.WriteLine($"✅ Created {studentList.Count} students.");
 
                 // ----------------------
-                // 4. Meetings — FIXED
+                // 4. Meetings — FUTURE ONLY + RANDOM NOTES + NO DOUBLE BOOKING
                 // ----------------------
+                string[] meetingNotes =
+                {
+            "Progress check and wellbeing discussion.",
+            "Want to discuss assignment.",
+            "Just checking up.",
+            "Need help with project work.",
+            "Discuss timetable and workload.",
+            "Clarifying assessment questions.",
+            "Checking wellbeing and academic progress."
+        };
+
                 foreach (var (studentId, supervisorId) in studentList)
                 {
+                    // 50% chance to create a meeting
                     if (random.NextDouble() >= 0.5)
                         continue;
 
-                    var sup = supervisorList.First(s => s.supervisorId == supervisorId);
+                    var supervisor = supervisorList.First(s => s.supervisorId == supervisorId);
 
-                    var blocks = sup.officeHours
+                    var blocks = supervisor.officeHours
                         .Split(',', StringSplitOptions.RemoveEmptyEntries)
                         .Select(b => b.Trim())
                         .ToList();
 
+                    // Choose one office-hour block at random: "Monday 09:00-11:00"
                     string chosenBlock = blocks[random.Next(blocks.Count)];
-
                     var parts = chosenBlock.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                     string dayName = parts[0];
                     string timeRange = parts[1];
@@ -199,39 +217,87 @@ namespace Design_Develop_Deploy_Project.Tables
                     TimeSpan blockStart = TimeSpan.Parse(times[0]);
                     TimeSpan blockEnd = TimeSpan.Parse(times[1]);
 
-                    int slotCount = (int)((blockEnd - blockStart).TotalMinutes / 30);
-                    int slotIndex = random.Next(slotCount);
+                    // Build all 30-minute slots in that office block
+                    var slots = new List<(TimeSpan start, TimeSpan end)>();
+                    var slotStart = blockStart;
 
-                    TimeSpan startTime = blockStart.Add(TimeSpan.FromMinutes(slotIndex * 30));
-                    TimeSpan endTime = startTime.Add(TimeSpan.FromMinutes(30));
-
-                    // Pick a seeded date matching the office-hour day
-                    DateTime date;
-                    do
+                    while (slotStart < blockEnd)
                     {
-                        date = DateTime.Now.AddDays(-random.Next(0, 30));
-                    }
-                    while (date.DayOfWeek.ToString() != dayName);
+                        var slotEnd = slotStart.Add(TimeSpan.FromMinutes(30));
+                        if (slotEnd > blockEnd)
+                            break;
 
-                    using (var meetCmd = new SQLiteCommand(
-                        @"INSERT INTO Meetings (student_id, supervisor_id, meeting_date, start_time, end_time, notes)
-                  VALUES (@stu, @sup, @d, @st, @et, @n);", conn))
-                    {
-                        meetCmd.Parameters.AddWithValue("@stu", studentId);
-                        meetCmd.Parameters.AddWithValue("@sup", supervisorId);
-                        meetCmd.Parameters.AddWithValue("@d", date.ToString("yyyy-MM-dd"));
-                        meetCmd.Parameters.AddWithValue("@st", startTime.ToString(@"hh\:mm"));
-                        meetCmd.Parameters.AddWithValue("@et", endTime.ToString(@"hh\:mm"));
-                        meetCmd.Parameters.AddWithValue("@n", "Progress check and wellbeing discussion.");
-                        meetCmd.ExecuteNonQuery();
+                        slots.Add((slotStart, slotEnd));
+                        slotStart = slotStart.Add(TimeSpan.FromMinutes(30));
                     }
 
-                    Console.WriteLine($"🗓️ Meeting seeded for Student {studentId} on {date:yyyy-MM-dd} {startTime}-{endTime}");
+                    bool created = false;
+
+                    // Randomize order of slots to avoid bias
+                    foreach (var (slotS, slotE) in slots.OrderBy(_ => random.Next()))
+                    {
+                        // Pick a future date (1–14 days) that matches the office-hour day
+                        DateTime date;
+                        int safety = 0;
+
+                        do
+                        {
+                            date = DateTime.Now.AddDays(random.Next(1, 15));
+                            safety++;
+                        }
+                        while (!string.Equals(date.DayOfWeek.ToString(), dayName, StringComparison.OrdinalIgnoreCase)
+                               && safety < 30);
+
+                        if (safety >= 30)
+                            continue; // Failed to find a matching day; try another slot
+
+                        // Check if this exact slot is already taken for this supervisor & date
+                        using (var checkCmd = new SQLiteCommand(
+                            @"SELECT COUNT(*) FROM Meetings
+                      WHERE supervisor_id = @sup
+                        AND meeting_date = @d
+                        AND start_time = @st
+                        AND end_time = @et;", conn))
+                        {
+                            checkCmd.Parameters.AddWithValue("@sup", supervisorId);
+                            checkCmd.Parameters.AddWithValue("@d", date.ToString("yyyy-MM-dd"));
+                            checkCmd.Parameters.AddWithValue("@st", slotS.ToString(@"hh\:mm"));
+                            checkCmd.Parameters.AddWithValue("@et", slotE.ToString(@"hh\:mm"));
+
+                            long existing = (long)checkCmd.ExecuteScalar();
+                            if (existing > 0)
+                                continue; // slot already in use → try another
+                        }
+
+                        // Slot is free → insert meeting
+                        using (var meetCmd = new SQLiteCommand(
+                            @"INSERT INTO Meetings (student_id, supervisor_id, meeting_date, start_time, end_time, notes)
+                      VALUES (@stu, @sup, @d, @st, @et, @n);", conn))
+                        {
+                            meetCmd.Parameters.AddWithValue("@stu", studentId);
+                            meetCmd.Parameters.AddWithValue("@sup", supervisorId);
+                            meetCmd.Parameters.AddWithValue("@d", date.ToString("yyyy-MM-dd"));
+                            meetCmd.Parameters.AddWithValue("@st", slotS.ToString(@"hh\:mm"));
+                            meetCmd.Parameters.AddWithValue("@et", slotE.ToString(@"hh\:mm"));
+                            meetCmd.Parameters.AddWithValue("@n", meetingNotes[random.Next(meetingNotes.Length)]);
+                            meetCmd.ExecuteNonQuery();
+                        }
+
+                        Console.WriteLine($"🗓️ Meeting seeded for Student {studentId} on {date:yyyy-MM-dd} {slotS}-{slotE}");
+                        created = true;
+                        break;
+                    }
+
+                    if (!created)
+                    {
+                        Console.WriteLine($"⚠ No available meeting slot for Student {studentId} (Supervisor {supervisorId})");
+                    }
                 }
 
                 Console.WriteLine("🎉 Seeder Completed Successfully!");
             }
         }
+
 
 
         public static void WipeTable()

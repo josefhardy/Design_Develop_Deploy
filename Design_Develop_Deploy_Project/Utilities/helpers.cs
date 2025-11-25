@@ -33,11 +33,22 @@ namespace Design_Develop_Deploy_Project.Utilities
         /// <summary>
         /// Prints a section of text with a header and optional divider line.
         /// </summary>
-        public static void PrintSection(string header, string content)
+        public static void PrintSection(string header, string content, string colour = "White")
         {
+
+            if (Enum.TryParse(colour, true, out ConsoleColor colourValue))
+            {
+                Console.ForegroundColor = colourValue;
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.White;
+            }
+
             Console.WriteLine($"\n{header}");
             Console.WriteLine(new string('-', header.Length));
             Console.WriteLine(content);
+            Console.ResetColor();
         }
 
         /// <summary>
@@ -91,5 +102,19 @@ namespace Design_Develop_Deploy_Project.Utilities
             return input ?? string.Empty;
         }
 
+        public static void WriteInColour(string prompt, string colour) 
+        {
+            if (Enum.TryParse(colour, true, out ConsoleColor colourValue))
+            {
+                Console.ForegroundColor = colourValue;
+            }
+            else 
+            {
+                Console.ForegroundColor= ConsoleColor.White;
+            }
+
+            Console.WriteLine(prompt);
+            Console.ResetColor();
+        }
     }
 }

@@ -67,55 +67,69 @@ namespace Design_Develop_Deploy_Project.Services
         }
 
 
-        public List<(DateTime start, DateTime end)> FetchAvailableSlots(int supervisorId, DateTime date)
+        public List<(DateTime, DateTime)> FetchAvailableSlots(int supervisorId, DateTime date)
         {
             var supervisor = _supervisorRepo.GetSupervisorById(supervisorId);
             if (supervisor == null || string.IsNullOrWhiteSpace(supervisor.office_hours))
                 return new List<(DateTime, DateTime)>();
 
             var officeBlocks = ParseOfficeHours(supervisor.office_hours);
+
+            // Only blocks for this specific day
             var todaysBlocks = officeBlocks
                 .Where(b => b.day == date.DayOfWeek)
                 .ToList();
 
             if (!todaysBlocks.Any())
-                return new List<(DateTime, DateTime)>(); // No office hours on this day
+                return new List<(DateTime, DateTime)>();
 
             var meetings = _meetingRepo.GetMeetingsBySupervisorAndDate(supervisorId, date);
-            var freeSlots = new List<(DateTime start, DateTime end)>();
+
+            var freeSlots = new List<(DateTime, DateTime)>();
 
             foreach (var block in todaysBlocks)
             {
-                // Break the 2-hour office block into 30-minute windows
-                var slotStart = date.Date.Add(block.start);
-                var blockEnd = date.Date.Add(block.end);
+                DateTime slotStart = date.Date.Add(block.start);
+                DateTime blockEnd = date.Date.Add(block.end);
 
+                // Loop through 30-minute increments
                 while (slotStart < blockEnd)
                 {
-                    var slotEnd = slotStart.Add(TimeSpan.FromMinutes(30));
+                    DateTime slotEnd = slotStart.AddMinutes(30);
+
                     if (slotEnd > blockEnd)
                         break;
 
-                    // Skip slots in the past (for today)
+                    // Skip earlier times today
                     if (slotStart.Date == DateTime.Today && slotStart < DateTime.Now)
                     {
-                        slotStart = slotStart.Add(TimeSpan.FromMinutes(30));
+                        slotStart = slotStart.AddMinutes(30);
                         continue;
                     }
 
+                    // 🔥 FIXED: Proper no-overlap rule (date included)
                     bool conflict = meetings.Any(m =>
-                        slotStart.TimeOfDay < m.end_time &&
-                        slotEnd.TimeOfDay > m.start_time);
+                    {
+                        DateTime meetingStart = date.Date.Add(m.start_time);
+                        DateTime meetingEnd = date.Date.Add(m.end_time);
+
+                        return slotStart < meetingEnd && slotEnd > meetingStart;
+                    });
 
                     if (!conflict)
                         freeSlots.Add((slotStart, slotEnd));
 
-                    slotStart = slotStart.Add(TimeSpan.FromMinutes(30));
+                    slotStart = slotStart.AddMinutes(30);
                 }
             }
 
-            return freeSlots.OrderBy(s => s.start).ToList();
+            // Keep old behavior exactly the same
+            return freeSlots
+                .OrderBy(s => s.Item1) // Item1 = start time
+                .ToList();
         }
+
+
 
 
         private static bool IsWithinOfficeHours(

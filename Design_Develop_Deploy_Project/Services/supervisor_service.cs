@@ -50,7 +50,7 @@ public class SupervisorService
 
         if (!int.TryParse(Console.ReadLine(), out int studentId))
         {
-            Console.WriteLine("Invalid Student ID.");
+            ConsoleHelper.WriteInColour("Invalid Student ID.", "Yellow");
             Thread.Sleep(1500);
             return;
         }
@@ -59,7 +59,7 @@ public class SupervisorService
         var student = _studentRepo.GetStudentById(studentId);
         if (student == null)
         {
-            Console.WriteLine("Student not found.");
+            ConsoleHelper.WriteInColour("Student not found.", "Red");
             Thread.Sleep(1500);
             return;
         }
@@ -67,7 +67,7 @@ public class SupervisorService
         // 🔒 SECURITY CHECK: student must belong to THIS supervisor
         if (student.supervisor_id != supervisor.supervisor_id)
         {
-            Console.WriteLine("Access denied: This student is not assigned to you.");
+            ConsoleHelper.WriteInColour("Access denied: This student is not assigned to you.", "Red");
             Thread.Sleep(2000);
             return;
         }
@@ -133,7 +133,7 @@ public class SupervisorService
 
         if (slotsByDate.Count == 0)
         {
-            ConsoleHelper.PrintSection("No Available Slots", "No valid meeting slots in the next 2 weeks.");
+            ConsoleHelper.PrintSection("No Available Slots", "No valid meeting slots in the next 2 weeks.", "Yellow");
             return;
         }
 
@@ -172,7 +172,7 @@ public class SupervisorService
         bool confirm = ConsoleHelper.GetYesOrNo("Confirm this meeting?");
         if (!confirm)
         {
-            ConsoleHelper.PrintSection("Cancelled", "Meeting booking cancelled.");
+            ConsoleHelper.WriteInColour("Meeting booking cancelled.", "Green");
             return;
         }
 
@@ -194,7 +194,7 @@ public class SupervisorService
         // -----------------------------
         if (!scheduler.ValidateMeeting(meeting, out string message))
         {
-            ConsoleHelper.PrintSection("Invalid Meeting", message);
+            ConsoleHelper.PrintSection("Invalid Meeting", message, "Yellow");
             return;
         }
 
@@ -205,11 +205,11 @@ public class SupervisorService
             _interactionRepo.RecordSupervisorInteraction(supervisor.supervisor_id, student.student_id, "meeting");
 
             ConsoleHelper.PrintSection("Success",
-                $"Meeting booked for {chosenSlot.start:dddd dd MMM HH:mm} – {chosenSlot.end:HH:mm}");
+                $"Meeting booked for {chosenSlot.start:dddd dd MMM HH:mm} – {chosenSlot.end:HH:mm}", "Green");
         }
         else
         {
-            ConsoleHelper.PrintSection("Error", "Meeting could not be saved.");
+            ConsoleHelper.WriteInColour("Error: Meeting could not be saved.", "Red");
         }
     }
 
@@ -224,7 +224,7 @@ public class SupervisorService
 
         if (meetings == null || meetings.Count == 0)
         {
-            Console.WriteLine("You have no upcoming meetings.");
+            ConsoleHelper.WriteInColour("You have no upcoming meetings.", "Yellow");
             Thread.Sleep(1500);
             return;
         }
@@ -263,11 +263,11 @@ public class SupervisorService
                 if (confirmCancel)
                 {
                     _meetingRepo.DeleteMeeting(selected_meeting.meeting_id);
-                    Console.WriteLine("Meeting cancelled successfully.");
+                    ConsoleHelper.WriteInColour("Meeting cancelled successfully.", "Green");
                 }
                 else
                 {
-                    Console.WriteLine("Meeting cancellation aborted.");
+                    ConsoleHelper.WriteInColour("Meeting cancellation aborted.", "Yellow");
                 }
                 break;
 
@@ -289,7 +289,7 @@ public class SupervisorService
                 }
                 else
                 {
-                    Console.WriteLine("\nReschedule cancelled.");
+                    ConsoleHelper.WriteInColour("\nReschedule cancelled.", "Green");
                 }
                 break;
 
@@ -336,7 +336,7 @@ public class SupervisorService
                 var parts = input.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                 if (parts.Length != 2)
                 {
-                    Console.WriteLine("Invalid format. Use: Day HH:mm-HH:mm (e.g., Monday 09:00-11:00)");
+                    ConsoleHelper.WriteInColour("Invalid format. Use: Day HH:mm-HH:mm (e.g., Monday 09:00-11:00)", "Yellow");
                     continue;
                 }
 
@@ -345,7 +345,7 @@ public class SupervisorService
 
                 if (!validDays.Contains(day, StringComparer.OrdinalIgnoreCase))
                 {
-                    Console.WriteLine("Invalid day. Please choose a weekday between Monday and Friday.");
+                    ConsoleHelper.WriteInColour("Invalid day. Please choose a weekday between Monday and Friday.", "Yellow");
                     continue;
                 }
 
@@ -358,31 +358,31 @@ public class SupervisorService
                 var times = parts[1].Split('-', StringSplitOptions.RemoveEmptyEntries);
                 if (times.Length != 2)
                 {
-                    Console.WriteLine("Invalid time format. Use HH:mm-HH:mm (e.g., 09:00-11:00).");
+                    ConsoleHelper.WriteInColour("Invalid time format. Use HH:mm-HH:mm (e.g., 09:00-11:00).", "Yellow");
                     continue;
                 }
 
                 if (!TimeSpan.TryParse(times[0], out TimeSpan start) || !TimeSpan.TryParse(times[1], out TimeSpan end))
                 {
-                    Console.WriteLine("Time must be in 24-hour format (e.g., 09:00 or 14:00).");
+                    ConsoleHelper.WriteInColour("Time must be in 24-hour format (e.g., 09:00 or 14:00).", "Yellow");
                     continue;
                 }
 
                 if (start >= end)
                 {
-                    Console.WriteLine("Start time must be before end time.");
+                    ConsoleHelper.WriteInColour("Start time must be before end time.", "Yellow");
                     continue;
                 }
 
                 if (end - start != TimeSpan.FromHours(2))
                 {
-                    Console.WriteLine("Each session must be exactly 2 hours long.");
+                    ConsoleHelper.WriteInColour("Each session must be exactly 2 hours long.", "Yellow");
                     continue;
                 }
 
                 if (start < new TimeSpan(8, 0, 0) || end > new TimeSpan(18, 0, 0))
                 {
-                    Console.WriteLine("Office hours must be between 08:00 and 18:00.");
+                    ConsoleHelper.WriteInColour("Office hours must be between 08:00 and 18:00.", "Yellow");
                     continue;
                 }
 
@@ -403,11 +403,11 @@ public class SupervisorService
         {
             string formattedHours = string.Join(",", newOfficeHours);
             _supervisorRepo.UpdateOfficeHours(supervisor.supervisor_id, formattedHours);
-            Console.WriteLine("\nOffice hours updated successfully!");
+            ConsoleHelper.WriteInColour("\nOffice hours updated successfully!", "Green");
         }
         else
         {
-            Console.WriteLine("\nChanges discarded.");
+            ConsoleHelper.WriteInColour("\nChanges discarded.", "Yellow");
         }
 
     }
@@ -435,7 +435,7 @@ public class SupervisorService
         var students = _studentRepo.GetAllStudentsUnderSpecificSupervisor(supervisor.supervisor_id);
         if (students == null || students.Count == 0)
         {
-            Console.WriteLine("No students found under your supervision.");
+            ConsoleHelper.WriteInColour("No students found under your supervision.", "Yellow");
             return;
         }
 
@@ -449,7 +449,7 @@ public class SupervisorService
 
         if (inactiveStudents.Count == 0)
         {
-            Console.WriteLine("All your students have updated their wellbeing recently!");
+            ConsoleHelper.WriteInColour("All your students have updated their wellbeing recently!", "Green");
             return;
         }
 

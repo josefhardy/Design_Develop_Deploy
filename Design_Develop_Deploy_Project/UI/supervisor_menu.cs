@@ -87,7 +87,7 @@ public class SupervisorMenu
             }
             catch (Exception ex)
             {
-                ConsoleHelper.PrintSection("Error", ex.Message);
+                ConsoleHelper.PrintSection("Error", ex.Message, "Red");
             }
 
             if (!exit)

@@ -29,7 +29,7 @@ public class TutorService
 
         if (interactions == null || interactions.Count == 0)
         {
-            Console.WriteLine("No students found in the system.");
+            ConsoleHelper.WriteInColour("No students found in the system.", "Yellow");
             ConsoleHelper.Pause();
             return;
         }
@@ -55,7 +55,7 @@ public class TutorService
 
         if (interactions == null || interactions.Count == 0)
         {
-            Console.WriteLine("No supervisors found in the system.");
+            ConsoleHelper.WriteInColour("No supervisors found in the system.", "Yellow");
             ConsoleHelper.Pause();
             return;
         }
@@ -72,7 +72,7 @@ public class TutorService
             if (supervisor.meetings_booked_this_month == 0 && supervisor.wellbeing_checks_this_month == 0)
             {
                 Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine("No activity recorded this month.");
+                ConsoleHelper.WriteInColour("No activity recorded this month.", "Yellow");
                 Console.ResetColor();
             }
 
@@ -119,7 +119,7 @@ public class TutorService
 
         if (students == null || students.Count == 0)
         {
-            Console.WriteLine("No students found in the specified wellbeing score range.");
+            ConsoleHelper.WriteInColour("No students found in the specified wellbeing score range.", "Yellow");
             ConsoleHelper.Pause();
             return;
         }

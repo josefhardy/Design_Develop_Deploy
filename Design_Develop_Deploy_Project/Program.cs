@@ -4,18 +4,19 @@ using Design_Develop_Deploy_Project.UI;
 using Design_Develop_Deploy_Project.Utilities;
 using Design_Develop_Deploy_Project.Tables;
 using System;
+using System.Security.Authentication;
 class Program 
 {
     static void Main(string[] args) 
     {
         DatabaseInitializer.EnsureCreated();
-        //DatabaseSeeder.WipeTable();
-        //Thread.Sleep(2000);
-        //DatabaseSeeder.Seed();
-        //Thread.Sleep(3000);
-        //Console.Clear();
-        //DatabaseSeeder.PrintAllUsers();
-        //Console.ReadKey();
+        DatabaseSeeder.WipeTable();
+        Thread.Sleep(2000);
+        DatabaseSeeder.Seed();
+        Thread.Sleep(3000);
+        Console.Clear();
+        DatabaseSeeder.PrintAllUsers();
+        Console.ReadKey();
         string dbpath = Path.GetFullPath(
             Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Tables", "Project_database.db")
         );
@@ -34,7 +35,9 @@ class Program
             var user = loginMenu.ShowLoginScreen();
 
             if (user == null) { continue; }
-
+            Console.Clear();
+            ConsoleHelper.WriteInColour("Login Successful", "Green");
+            Thread.Sleep(2000);
             Console.Clear();
             Console.WriteLine($"Hi {user.first_name}, Welcome back!");
             Console.WriteLine();

@@ -62,14 +62,14 @@ public class StudentService
         }
         catch (FormatException)
         {
-            Console.WriteLine("\nInvalid input — score must be a number between 0 and 10.");
+            ConsoleHelper.WriteInColour("\nInvalid input — score must be a number between 0 and 10.", "Red");
             Thread.Sleep(1500);
             return;
         }
 
         if (new_score_int < 0 || new_score_int > 10)
         {
-            Console.WriteLine("\nInvalid score — please enter a number between 0 and 10.");
+            ConsoleHelper.WriteInColour("\nInvalid score — please enter a number between 0 and 10.", "Red");
             Thread.Sleep(1500);
             return;
         }
@@ -77,7 +77,7 @@ public class StudentService
         _statusRepo.UpdateStudentWellbeing(student.student_id, new_score_int, student);
         student.wellbeing_score = new_score_int;
 
-        Console.WriteLine("\nWellbeing status updated successfully!");
+        ConsoleHelper.WriteInColour("\nWellbeing status updated successfully!", "Green");
         Thread.Sleep(1500);
     }
 
@@ -106,7 +106,7 @@ public class StudentService
 
         if (slotsByDate.Count == 0)
         {
-            ConsoleHelper.PrintSection("No Available Slots", "No open slots in the next 2 weeks.");
+            ConsoleHelper.PrintSection("No Available Slots", "No open slots in the next 2 weeks.", "Yellow");
             return;
         }
 
@@ -142,7 +142,7 @@ public class StudentService
 
         if (!scheduler.ValidateMeeting(meeting, out string message))
         {
-            ConsoleHelper.PrintSection("Invalid Meeting", message);
+            ConsoleHelper.PrintSection("Invalid Meeting", message, "Yellow");
             return;
         }
 
@@ -150,11 +150,11 @@ public class StudentService
         if (success)
         {
             ConsoleHelper.PrintSection("Success",
-                $"Meeting booked for {chosenSlot.start:dddd dd MMM HH:mm} – {chosenSlot.end:HH:mm}");
+                $"Meeting booked for {chosenSlot.start:dddd dd MMM HH:mm} – {chosenSlot.end:HH:mm}", "Green");
         }
         else
         {
-            ConsoleHelper.PrintSection("Error", "Failed to book the meeting.");
+            ConsoleHelper.WriteInColour("Error, failed to book the meeting", "Red");
         }
 
     }
@@ -172,7 +172,7 @@ public class StudentService
         // 2️⃣ No meetings?
         if (meetings.Count == 0)
         {
-            Console.WriteLine("You currently have no meeting booked.\n");
+            ConsoleHelper.WriteInColour("You currently have no meeting booked.\n", "Yellow");
             bool bookNow = ConsoleHelper.GetYesOrNo("Would you like to book a meeting now?");
             if (bookNow)
             {
@@ -232,7 +232,7 @@ public class StudentService
             }
             else
             {
-                Console.WriteLine("\nReschedule cancelled.");
+                ConsoleHelper.WriteInColour("\nReschedule cancelled.", "Green");
                 Thread.Sleep(1500);
             }
         }
@@ -242,11 +242,11 @@ public class StudentService
             if (confirm)
             {
                 _meetingRepo.DeleteMeeting(selectedMeeting.meeting_id);
-                Console.WriteLine("\nMeeting cancelled successfully.");
+                ConsoleHelper.WriteInColour("\nMeeting cancelled successfully.", "Green");
             }
             else
             {
-                Console.WriteLine("\nMeeting cancellation aborted.");
+                ConsoleHelper.WriteInColour("\nMeeting cancellation aborted.", "Yellow");
             }
         }
     }

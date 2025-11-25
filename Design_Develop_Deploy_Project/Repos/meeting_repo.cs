@@ -54,7 +54,7 @@ public class MeetingRepository
         }
     }
 
-    public List<Meeting> GetMeetingsByStudentId(int student_id)
+    public List<Meeting> GetMeetingsByStudentId(int studentId)
     {
         var meetings = new List<Meeting>();
 
@@ -63,16 +63,16 @@ public class MeetingRepository
             using (var conn = new SQLiteConnection(_connectionString))
             {
                 conn.Open();
-
                 string query = @"
                 SELECT *
                 FROM Meetings
                 WHERE student_id = @StudentId
+                AND meeting_date >= date('now')        -- 🔥 filter out past meetings
                 ORDER BY meeting_date ASC, start_time ASC";
 
                 using (var cmd = new SQLiteCommand(query, conn))
                 {
-                    cmd.Parameters.AddWithValue("@StudentId", student_id);
+                    cmd.Parameters.AddWithValue("@StudentId", studentId);
 
                     using (var reader = cmd.ExecuteReader())
                     {
@@ -91,7 +91,6 @@ public class MeetingRepository
 
         return meetings;
     }
-
 
     public void DeleteMeeting(int meetingId) 
 	{
@@ -120,34 +119,17 @@ public class MeetingRepository
 
     private Meeting MapReaderToMeeting(SQLiteDataReader reader)
     {
-        // Parse full datetime values
-        DateTime meetingDateTime = DateTime.ParseExact(
-            reader["meeting_date"].ToString(),
-            "dd/MM/yyyy HH:mm:ss",
-            System.Globalization.CultureInfo.InvariantCulture
-        );
-
-        DateTime startDateTime = DateTime.ParseExact(
-            reader["start_time"].ToString(),
-            "dd/MM/yyyy HH:mm:ss",
-            System.Globalization.CultureInfo.InvariantCulture
-        );
-
-        DateTime endDateTime = DateTime.ParseExact(
-            reader["end_time"].ToString(),
-            "dd/MM/yyyy HH:mm:ss",
-            System.Globalization.CultureInfo.InvariantCulture
-        );
-
         return new Meeting
         {
             meeting_id = Convert.ToInt32(reader["meeting_id"]),
             student_id = Convert.ToInt32(reader["student_id"]),
             supervisor_id = Convert.ToInt32(reader["supervisor_id"]),
 
-            meeting_date = meetingDateTime,
-            start_time = startDateTime.TimeOfDay,
-            end_time = endDateTime.TimeOfDay,
+            // SQLite stores ISO date and time separately — parse correctly
+            meeting_date = DateTime.Parse(reader["meeting_date"].ToString()),
+
+            start_time = TimeSpan.Parse(reader["start_time"].ToString()),
+            end_time = TimeSpan.Parse(reader["end_time"].ToString()),
 
             notes = reader["notes"] == DBNull.Value ? null : reader["notes"].ToString(),
             created_at = Convert.ToDateTime(reader["created_at"]),
@@ -169,6 +151,7 @@ public class MeetingRepository
                 SELECT * 
                 FROM Meetings 
                 WHERE supervisor_id = @SupervisorId
+                  AND meeting_date >= date('now')   -- 🔥 filter out past meetings
                 ORDER BY meeting_date ASC, start_time ASC";
 
                 using (var cmd = new SQLiteCommand(query, conn))
@@ -177,7 +160,7 @@ public class MeetingRepository
 
                     using (var reader = cmd.ExecuteReader())
                     {
-                        while (reader.Read()) 
+                        while (reader.Read())
                         {
                             meetings.Add(MapReaderToMeeting(reader));
                         }
@@ -192,6 +175,7 @@ public class MeetingRepository
 
         return meetings;
     }
+
 
     public List<Meeting> GetMeetingsBySupervisorAndDate(int supervisorId, DateTime date)
     {

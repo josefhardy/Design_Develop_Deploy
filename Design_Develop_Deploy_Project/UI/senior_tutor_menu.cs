@@ -50,17 +50,17 @@ public class SeniorTutorMenu
                         tutorService.ViewStudentsByWellBeingScore();
                         ConsoleHelper.Pause();
                         break;
-                    case 5:
+                    case 4:
                         exit = true;
                         break;
                     default:
-                        Console.WriteLine("Invaliud choice, please try again.");
+                        ConsoleHelper.WriteInColour("Invalid choice, please try again.", "Yellow");
                         break;
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"\nAn error occurred: {ex.Message}");
+                ConsoleHelper.WriteInColour($"\nAn error occurred: {ex.Message}", "Yellow");
                 ConsoleHelper.Pause();
             }
         }
