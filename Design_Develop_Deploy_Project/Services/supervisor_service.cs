@@ -27,20 +27,35 @@ public class SupervisorService
     public void ViewAllStudents()
     {
         Console.Clear();
+
         Console.WriteLine("=========== All Students ===========");
         Console.WriteLine($"Supervisor: {supervisor.first_name} {supervisor.last_name}");
         Console.WriteLine("====================================\n");
 
-
-        var students = _studentRepo.GetAllStudentsUnderSpecificSupervisor(supervisor.supervisor_id)
+        var students = _studentRepo
+            .GetAllStudentsUnderSpecificSupervisor(supervisor.supervisor_id)
             .OrderBy(s => s.wellbeing_score)
             .ToList();
 
+        if (!students.Any())
+        {
+            Console.WriteLine("No students found.\n");
+            return;
+        }
+
+        Console.WriteLine("ID   | Name                     | Wellbeing");
+        Console.WriteLine("----------------------------------------------");
+
         foreach (var s in students)
         {
-            Console.WriteLine($"ID: {s.student_id}, Name: {s.first_name} {s.last_name}, Wellbeing: {s.wellbeing_score}/10");
+            string fullName = $"{s.first_name} {s.last_name}";
+
+            Console.WriteLine(
+                $"{s.student_id,-4} | {fullName,-25} | {s.wellbeing_score}/10"
+            );
         }
     }
+
 
     public void ViewStudentDetails()
     {
@@ -229,23 +244,53 @@ public class SupervisorService
             return;
         }
 
-        List<string> meetings_details = meetings
-            .Select(m => {
-                var student = _studentRepo.GetStudentById(m.student_id);
-                string studentName = student != null ? $"{student.first_name} {student.last_name}" : "Unknown";
-                return $"Date: {m.meeting_date:ddd dd MMM} {m.start_time:hh\\:mm} – {m.end_time:hh\\:mm} | Student: {studentName} | Notes: {(string.IsNullOrWhiteSpace(m.notes) ? "None" : m.notes)}";
-            }).ToList();
+        // HEADER
+        Console.WriteLine("No  | Date & Time                 | Student              | Notes");
+        Console.WriteLine("-----------------------------------------------------------------------");
 
-        for (int i = 0; i < meetings_details.Count; i++)
+        // PRINT ROWS
+        for (int i = 0; i < meetings.Count; i++)
         {
-            Console.WriteLine($"{i + 1}. {meetings_details[i]}");
+            var m = meetings[i];
+            var student = _studentRepo.GetStudentById(m.student_id);
+
+            string studentName = student != null ? $"{student.first_name} {student.last_name}" : "Unknown";
+            string notes = string.IsNullOrWhiteSpace(m.notes) ? "None" : m.notes;
+
+            string date = $"{m.meeting_date:ddd dd MMM}";
+            string time = $"{m.start_time:hh\\:mm}–{m.end_time:hh\\:mm}";
+
+            Console.WriteLine($"{i + 1,-3} | {date} {time,-18} | {studentName,-18} | {notes}");
         }
 
         Console.WriteLine("\n===================================");
+        Console.WriteLine("Select a meeting to manage:");
 
-        int meeting_choice = ConsoleHelper.PromptForChoice(meetings_details, "Select a meeting to manage:");
-        var selected_meeting = meetings[meeting_choice - 1];
+        // 🎯 CUSTOM SELECTION INPUT (no PromptForChoice)
+        int meetingChoice = -1;
+
+        while (true)
+        {
+            Console.Write($"Enter a number (1 - {meetings.Count}): ");
+            string input = Console.ReadLine()?.Trim();
+
+            if (int.TryParse(input, out meetingChoice) &&
+                meetingChoice >= 1 &&
+                meetingChoice <= meetings.Count)
+            {
+                break; // valid
+            }
+
+            ConsoleHelper.WriteInColour("Invalid choice. Try again.\n", "Red");
+        }
+
+        var selectedMeeting = meetings[meetingChoice - 1];
+
         Console.Clear();
+        Console.WriteLine("=========== Manage Meeting ===========");
+        Console.WriteLine($"Date: {selectedMeeting.meeting_date:dddd dd MMM}");
+        Console.WriteLine($"Time: {selectedMeeting.start_time:hh\\:mm} – {selectedMeeting.end_time:hh\\:mm}");
+        Console.WriteLine("=======================================\n");
 
         var manageOptions = new List<string>
     {
@@ -254,42 +299,41 @@ public class SupervisorService
         "Return to Main Menu"
     };
 
-        int manage_choice = ConsoleHelper.PromptForChoice(manageOptions, "Manage Meeting:");
+        // Continue using PromptForChoice HERE because it's OK if the console clears
+        int manageChoice = ConsoleHelper.PromptForChoice(manageOptions, "Choose an option:");
 
-        switch (manage_choice)
+        switch (manageChoice)
         {
             case 1:
                 bool confirmCancel = ConsoleHelper.GetYesOrNo("Are you sure you want to cancel this meeting?");
                 if (confirmCancel)
                 {
-                    _meetingRepo.DeleteMeeting(selected_meeting.meeting_id);
+                    _meetingRepo.DeleteMeeting(selectedMeeting.meeting_id);
                     ConsoleHelper.WriteInColour("Meeting cancelled successfully.", "Green");
                 }
                 else
                 {
-                    ConsoleHelper.WriteInColour("Meeting cancellation aborted.", "Yellow");
+                    ConsoleHelper.WriteInColour("Cancellation aborted.", "Yellow");
                 }
                 break;
 
             case 2:
                 Console.Clear();
                 Console.WriteLine("=========== Reschedule Meeting ===========");
-                Console.WriteLine($"Your current meeting is on {selected_meeting.meeting_date:dddd dd MMM} " +
-                                  $"from {selected_meeting.start_time:hh\\:mm} to {selected_meeting.end_time:hh\\:mm}.");
+                Console.WriteLine($"Current: {selectedMeeting.meeting_date:dddd dd MMM} " +
+                                  $"{selectedMeeting.start_time:hh\\:mm}–{selectedMeeting.end_time:hh\\:mm}");
                 Console.WriteLine("==========================================\n");
 
-                bool confirmReschedule = ConsoleHelper.GetYesOrNo("Would you like to find a new time?");
+                bool confirmReschedule = ConsoleHelper.GetYesOrNo("Would you like to choose a new time?");
                 if (confirmReschedule)
                 {
-                    Console.WriteLine("\nLet's reschedule your meeting.");
+                    Console.WriteLine("\nFinding new available times...");
                     BookMeeting();
-
-                    // Delete the old meeting after successful booking
-                    _meetingRepo.DeleteMeeting(selected_meeting.meeting_id);
+                    _meetingRepo.DeleteMeeting(selectedMeeting.meeting_id);
                 }
                 else
                 {
-                    ConsoleHelper.WriteInColour("\nReschedule cancelled.", "Green");
+                    ConsoleHelper.WriteInColour("\nReschedule cancelled.", "Yellow");
                 }
                 break;
 
@@ -297,6 +341,7 @@ public class SupervisorService
                 return;
         }
     }
+
 
     public void UpdateOfficeHours()
     {
@@ -431,8 +476,11 @@ public class SupervisorService
     {
         Console.Clear();
         Console.WriteLine("=========== Inactive Students ===========");
+        Console.WriteLine($"Supervisor: {supervisor.first_name} {supervisor.last_name}");
+        Console.WriteLine("=========================================\n");
 
         var students = _studentRepo.GetAllStudentsUnderSpecificSupervisor(supervisor.supervisor_id);
+
         if (students == null || students.Count == 0)
         {
             ConsoleHelper.WriteInColour("No students found under your supervision.", "Yellow");
@@ -453,34 +501,44 @@ public class SupervisorService
             return;
         }
 
-        // Display inactive students
-        foreach (var student in inactiveStudents)
+        // TABLE HEADER
+        Console.WriteLine("ID   | Name                     | Wellbeing | Last Update");
+        Console.WriteLine("------------------------------------------------------------");
+
+        // TABLE ROWS
+        foreach (var s in inactiveStudents)
         {
-            string lastUpdate = student.last_status_update.HasValue
-                ? student.last_status_update.Value.ToString("dd MMM yyyy")
+            string lastUpdate = s.last_status_update.HasValue
+                ? s.last_status_update.Value.ToString("dd MMM yyyy")
                 : "No record";
 
-            Console.WriteLine($"ID: {student.student_id}");
-            Console.WriteLine($"Name: {student.first_name} {student.last_name}");
-            Console.WriteLine($"Wellbeing: {student.wellbeing_score}/10");
-            Console.WriteLine($"Last Update: {lastUpdate}");
-            Console.WriteLine("-----------------------------------------");
+            string fullName = $"{s.first_name} {s.last_name}";
+
+            Console.WriteLine(
+                $"{s.student_id,-4} | {fullName,-25} | {s.wellbeing_score,-9}/10 | {lastUpdate}"
+            );
         }
 
-        Console.WriteLine($"Total inactive students: {inactiveStudents.Count}");
-        Console.WriteLine();
+        Console.WriteLine("\n------------------------------------------------------------");
+        Console.WriteLine($"Total inactive students: {inactiveStudents.Count}\n");
 
-        // Optional: prompt to take action
+        // ACTION OPTION
         bool book = ConsoleHelper.GetYesOrNo("Would you like to book a meeting with one of these students?");
         if (book)
         {
-            int choice = ConsoleHelper.PromptForChoice(
-                inactiveStudents.Select(s => $"{s.first_name} {s.last_name} (Last update: {(s.last_status_update.HasValue ? s.last_status_update.Value.ToString("dd MMM") : "No record")})").ToList(),
-                "Select a student to book a meeting with:");
+            // Build list for selection
+            var options = inactiveStudents
+                .Select(s =>
+                    $"{s.first_name} {s.last_name} (Last update: " +
+                    $"{(s.last_status_update.HasValue ? s.last_status_update.Value.ToString("dd MMM") : "No record")})"
+                ).ToList();
+
+            int choice = ConsoleHelper.PromptForChoice(options, "Select a student to book a meeting with:");
 
             var selectedStudent = inactiveStudents[choice - 1];
             BookMeeting(selectedStudent);
         }
     }
+
 
 }
