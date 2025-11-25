@@ -54,33 +54,31 @@ public class MeetingRepository
         }
     }
 
-    public Meeting GetMeetingByVariable(int? student_id = null, int? supervisor_id = null, DateTime? meeting_date = null)
+    public List<Meeting> GetMeetingsByStudentId(int student_id)
     {
+        var meetings = new List<Meeting>();
+
         try
         {
             using (var conn = new SQLiteConnection(_connectionString))
             {
                 conn.Open();
 
-                string query = @"SELECT *
-                             FROM Meetings
-                             WHERE 1 = 1";
-
-                if (student_id.HasValue) query += " AND student_id = @StudentId";
-                if (supervisor_id.HasValue) query += " AND supervisor_id = @SupervisorId";
-                if (meeting_date.HasValue) query += " AND meeting_date = @MeetingDate";
+                string query = @"
+                SELECT *
+                FROM Meetings
+                WHERE student_id = @StudentId
+                ORDER BY meeting_date ASC, start_time ASC";
 
                 using (var cmd = new SQLiteCommand(query, conn))
                 {
-                    if (student_id.HasValue) cmd.Parameters.AddWithValue("@StudentId", student_id.Value);
-                    if (supervisor_id.HasValue) cmd.Parameters.AddWithValue("@SupervisorId", supervisor_id.Value);
-                    if (meeting_date.HasValue) cmd.Parameters.AddWithValue("@MeetingDate", meeting_date.Value.Date);
+                    cmd.Parameters.AddWithValue("@StudentId", student_id);
 
                     using (var reader = cmd.ExecuteReader())
                     {
-                        if (reader.Read())
+                        while (reader.Read())
                         {
-                            return MapReaderToMeeting(reader);
+                            meetings.Add(MapReaderToMeeting(reader));
                         }
                     }
                 }
@@ -88,11 +86,12 @@ public class MeetingRepository
         }
         catch (Exception ex)
         {
-            throw new Exception($"Error retrieving meeting: {ex.Message}", ex);
+            throw new Exception($"Error retrieving meetings by student ID: {ex.Message}", ex);
         }
 
-        return null;
+        return meetings;
     }
+
 
     public void DeleteMeeting(int meetingId) 
 	{
@@ -231,11 +230,5 @@ public class MeetingRepository
 
         return meetings;
     }
-
-
-
-
-
-
 
 }

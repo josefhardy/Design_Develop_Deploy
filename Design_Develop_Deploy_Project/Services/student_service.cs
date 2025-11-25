@@ -159,17 +159,18 @@ public class StudentService
 
     }
 
-
     public void ViewMeetings()
     {
         Console.Clear();
-        Console.WriteLine("=========== View Meeting ===========");
+        Console.WriteLine("=========== View Meetings ===========");
         Console.WriteLine($"Student: {student.first_name} {student.last_name}");
         Console.WriteLine("=======================================\n");
 
-        var meeting = _meetingRepo.GetMeetingByVariable(student_id: student.student_id);
+        // 1️⃣ Fetch all meetings for the student
+        var meetings = _meetingRepo.GetMeetingsByStudentId(student.student_id);
 
-        if (meeting == null)
+        // 2️⃣ No meetings?
+        if (meetings.Count == 0)
         {
             Console.WriteLine("You currently have no meeting booked.\n");
             bool bookNow = ConsoleHelper.GetYesOrNo("Would you like to book a meeting now?");
@@ -180,26 +181,44 @@ public class StudentService
             return;
         }
 
-        var supervisor = _supervisorRepo.GetSupervisorById(meeting.supervisor_id);
+        var supervisor = _supervisorRepo.GetSupervisorById(student.supervisor_id);
 
-        Console.WriteLine("=========== Current Meeting ===========");
-        Console.WriteLine($"Date: {meeting.meeting_date:dddd dd MMM}");
-        Console.WriteLine($"Time: {meeting.start_time} – {meeting.end_time}");
-        Console.WriteLine($"Supervisor: {supervisor.first_name} {supervisor.last_name}");
-        Console.WriteLine($"Notes: {(string.IsNullOrWhiteSpace(meeting.notes) ? "None" : meeting.notes)}");
-        Console.WriteLine("=======================================\n");
+        // 3️⃣ Show list of meetings
+        Console.WriteLine("=========== Your Meetings ===========");
 
-        int choice = ConsoleHelper.PromptForChoice(
+        var menuOptions = new List<string>();
+        for (int i = 0; i < meetings.Count; i++)
+        {
+            var m = meetings[i];
+            string option =
+                $"{m.meeting_date:ddd dd MMM} | {m.start_time:hh\\:mm}-{m.end_time:hh\\:mm} | " +
+                $"Notes: {(string.IsNullOrWhiteSpace(m.notes) ? "None" : m.notes)}";
+
+            menuOptions.Add(option);
+            Console.WriteLine($"{i + 1}. {option}");
+        }
+
+        Console.WriteLine("\n=======================================");
+
+        // 4️⃣ Ask user which meeting to manage
+        int meetingChoice = ConsoleHelper.PromptForChoice(menuOptions, "Select a meeting:");
+
+        var selectedMeeting = meetings[meetingChoice - 1];
+        Console.Clear();
+
+        // 5️⃣ Meeting actions
+        int action = ConsoleHelper.PromptForChoice(
             new List<string> { "Reschedule meeting", "Cancel meeting", "Return to menu" },
             "What would you like to do?"
         );
 
-        if (choice == 1)
+        // 6️⃣ Handle actions
+        if (action == 1) // Reschedule
         {
             Console.Clear();
             Console.WriteLine("=========== Reschedule Meeting ===========");
-            Console.WriteLine($"Your current meeting is on {meeting.meeting_date:dddd dd MMM} " +
-                              $"from {meeting.start_time:hh\\:mm} to {meeting.end_time:hh\\:mm}.");
+            Console.WriteLine($"Your current meeting is on {selectedMeeting.meeting_date:dddd dd MMM} " +
+                              $"from {selectedMeeting.start_time:hh\\:mm} to {selectedMeeting.end_time:hh\\:mm}.");
             Console.WriteLine("==========================================\n");
 
             bool confirmReschedule = ConsoleHelper.GetYesOrNo("Would you like to find a new time?");
@@ -208,8 +227,8 @@ public class StudentService
                 Console.WriteLine("\nLet's reschedule your meeting.");
                 BookMeeting();
 
-                // Delete the old meeting *after* successful booking
-                _meetingRepo.DeleteMeeting(meeting.meeting_id);
+                // Delete OLD meeting after the new one is booked
+                _meetingRepo.DeleteMeeting(selectedMeeting.meeting_id);
             }
             else
             {
@@ -217,12 +236,12 @@ public class StudentService
                 Thread.Sleep(1500);
             }
         }
-        else if (choice == 2)
+        else if (action == 2) // Cancel
         {
             bool confirm = ConsoleHelper.GetYesOrNo("Are you sure you want to cancel this meeting?");
             if (confirm)
             {
-                _meetingRepo.DeleteMeeting(meeting.meeting_id);
+                _meetingRepo.DeleteMeeting(selectedMeeting.meeting_id);
                 Console.WriteLine("\nMeeting cancelled successfully.");
             }
             else

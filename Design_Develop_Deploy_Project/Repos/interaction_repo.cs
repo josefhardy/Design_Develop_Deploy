@@ -70,7 +70,7 @@ public class InteractionRepository
             {
                 conn.Open();
                 string query = @"
-                    SELECT meetings_booked_last_month, wellbeing_checks_last_month
+                    SELECT meetings_booked_this_month, wellbeing_checks_this_month
                     FROM Supervisors
                     WHERE supervisor_id = @SupervisorId";
 
@@ -81,8 +81,8 @@ public class InteractionRepository
                     {
                         if (reader.Read())
                         {
-                            int meetings = Convert.ToInt32(reader["meetings_booked_last_month"]);
-                            int checks = Convert.ToInt32(reader["wellbeing_checks_last_month"]);
+                            int meetings = Convert.ToInt32(reader["meetings_booked_this_month"]);
+                            int checks = Convert.ToInt32(reader["wellbeing_checks_this_month"]);
                             return (meetings, checks);
                         }
                     }
@@ -126,8 +126,8 @@ public class InteractionRepository
                                 last_name = reader["last_name"].ToString(),
                                 email = reader["email"].ToString(),
                                 role = reader["role"].ToString(),
-                                meetings_booked_this_month = Convert.ToInt32(reader["meetings_booked_last_month"]),
-                                wellbeing_checks_this_month = Convert.ToInt32(reader["wellbeing_checks_last_month"])
+                                meetings_booked_this_month = Convert.ToInt32(reader["meetings_booked_this_month"]),
+                                wellbeing_checks_this_month = Convert.ToInt32(reader["wellbeing_checks_this_month"])
                             };
 
                             int total = supervisor.meetings_booked_this_month + supervisor.wellbeing_checks_this_month;

@@ -50,25 +50,35 @@ public class SupervisorService
 
         if (!int.TryParse(Console.ReadLine(), out int studentId))
         {
-            Console.WriteLine("Invalid Student ID. Returning to menu...");
+            Console.WriteLine("Invalid Student ID.");
             Thread.Sleep(1500);
             return;
         }
 
+        // Fetch student
         var student = _studentRepo.GetStudentById(studentId);
         if (student == null)
         {
-            Console.WriteLine("Student not found. Returning to menu...");
+            Console.WriteLine("Student not found.");
             Thread.Sleep(1500);
             return;
         }
 
+        // 🔒 SECURITY CHECK: student must belong to THIS supervisor
+        if (student.supervisor_id != supervisor.supervisor_id)
+        {
+            Console.WriteLine("Access denied: This student is not assigned to you.");
+            Thread.Sleep(2000);
+            return;
+        }
+
+        // Show student details
         Console.WriteLine($"\nName: {student.first_name} {student.last_name}");
         Console.WriteLine($"Wellbeing Score: {student.wellbeing_score}/10");
         Console.WriteLine($"Last Status Update: {(student.last_status_update.HasValue ? student.last_status_update.Value.ToString("dd MMM yyyy") : "N/A")}");
         Console.WriteLine("======================================");
 
-        // ✅ NEW: Record that the supervisor viewed this student’s wellbeing
+        // Record interaction
         _interactionRepo.RecordSupervisorInteraction(supervisor.supervisor_id, student.student_id, "wellbeing_check");
 
         bool answer = ConsoleHelper.GetYesOrNo("Would you like to book a meeting with this student?");
@@ -78,10 +88,10 @@ public class SupervisorService
         }
         else
         {
-            Console.WriteLine("\nReturning to the main menu...");
             Thread.Sleep(1500);
         }
     }
+
 
     public void BookMeeting(Student student = null)
     {
@@ -123,8 +133,7 @@ public class SupervisorService
 
         if (slotsByDate.Count == 0)
         {
-            ConsoleHelper.PrintSection("❌ No Available Slots", "No valid meeting slots in the next 2 weeks.");
-            ConsoleHelper.Pause();
+            ConsoleHelper.PrintSection("No Available Slots", "No valid meeting slots in the next 2 weeks.");
             return;
         }
 
@@ -164,7 +173,6 @@ public class SupervisorService
         if (!confirm)
         {
             ConsoleHelper.PrintSection("Cancelled", "Meeting booking cancelled.");
-            ConsoleHelper.Pause();
             return;
         }
 
@@ -186,8 +194,7 @@ public class SupervisorService
         // -----------------------------
         if (!scheduler.ValidateMeeting(meeting, out string message))
         {
-            ConsoleHelper.PrintSection("❌ Invalid Meeting", message);
-            ConsoleHelper.Pause();
+            ConsoleHelper.PrintSection("Invalid Meeting", message);
             return;
         }
 
@@ -197,15 +204,13 @@ public class SupervisorService
         {
             _interactionRepo.RecordSupervisorInteraction(supervisor.supervisor_id, student.student_id, "meeting");
 
-            ConsoleHelper.PrintSection("✅ Success",
+            ConsoleHelper.PrintSection("Success",
                 $"Meeting booked for {chosenSlot.start:dddd dd MMM HH:mm} – {chosenSlot.end:HH:mm}");
         }
         else
         {
-            ConsoleHelper.PrintSection("❌ Error", "Meeting could not be saved.");
+            ConsoleHelper.PrintSection("Error", "Meeting could not be saved.");
         }
-
-        ConsoleHelper.Pause();
     }
 
     public void ViewMeetings()
@@ -220,7 +225,6 @@ public class SupervisorService
         if (meetings == null || meetings.Count == 0)
         {
             Console.WriteLine("You have no upcoming meetings.");
-            Console.WriteLine("Returning to menu...");
             Thread.Sleep(1500);
             return;
         }
@@ -265,7 +269,6 @@ public class SupervisorService
                 {
                     Console.WriteLine("Meeting cancellation aborted.");
                 }
-                ConsoleHelper.Pause();
                 break;
 
             case 2:
@@ -288,7 +291,6 @@ public class SupervisorService
                 {
                     Console.WriteLine("\nReschedule cancelled.");
                 }
-                ConsoleHelper.Pause();
                 break;
 
             case 3:
@@ -308,7 +310,7 @@ public class SupervisorService
 
         Console.WriteLine($"Current office hours: {supervisor.office_hours}");
 
-        bool update = ConsoleHelper.GetYesOrNo("Would you like to update your office hours? Choose no to continue with the current hours");
+        bool update = ConsoleHelper.GetYesOrNo("\nWould you like to update your office hours? Choose no to continue with the current hours");
         if (!update)
         {
             return;
@@ -424,18 +426,16 @@ public class SupervisorService
         Console.WriteLine($"Wellbeing Checks Conducted This Month: {wellbeingChecks}");
         Console.WriteLine("==========================================");
 
-        ConsoleHelper.Pause("Press any key to return to the main menu...");
     }
     public void ViewInactiveStudents()
     {
         Console.Clear();
-        Console.WriteLine("=========== Inactive Students ===========\n");
+        Console.WriteLine("=========== Inactive Students ===========");
 
         var students = _studentRepo.GetAllStudentsUnderSpecificSupervisor(supervisor.supervisor_id);
         if (students == null || students.Count == 0)
         {
             Console.WriteLine("No students found under your supervision.");
-            ConsoleHelper.Pause();
             return;
         }
 
@@ -449,8 +449,7 @@ public class SupervisorService
 
         if (inactiveStudents.Count == 0)
         {
-            Console.WriteLine("✅ All your students have updated their wellbeing recently!");
-            ConsoleHelper.Pause();
+            Console.WriteLine("All your students have updated their wellbeing recently!");
             return;
         }
 
@@ -482,8 +481,6 @@ public class SupervisorService
             var selectedStudent = inactiveStudents[choice - 1];
             BookMeeting(selectedStudent);
         }
-
-        ConsoleHelper.Pause("Press any key to return to the menu...");
     }
 
 }

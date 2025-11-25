@@ -44,8 +44,6 @@ public class TutorService
             Console.WriteLine($"Total Interactions: {total}");
             Console.WriteLine("---------------------------------------------");
         }
-
-        ConsoleHelper.Pause("Press any key to return to the menu...");
     }
 
     public void ViewAllSupervisors()
@@ -74,14 +72,12 @@ public class TutorService
             if (supervisor.meetings_booked_this_month == 0 && supervisor.wellbeing_checks_this_month == 0)
             {
                 Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine("⚠️  No activity recorded this month.");
+                Console.WriteLine("No activity recorded this month.");
                 Console.ResetColor();
             }
 
             Console.WriteLine("---------------------------------------");
         }
-
-        ConsoleHelper.Pause("Press any key to return to the menu...");
     }
 
     public void ViewStudentsByWellBeingScore()
@@ -136,8 +132,6 @@ public class TutorService
             Console.WriteLine($"Last Updated: {(student.last_status_update.HasValue ? student.last_status_update.Value.ToString("dd MMM yyyy") : "No record")}");
             Console.WriteLine("---------------------------------------------");
         }
-
-        ConsoleHelper.Pause("Press any key to return to the menu...");
     }
 
 }
