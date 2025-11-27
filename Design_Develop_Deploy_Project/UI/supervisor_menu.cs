@@ -41,7 +41,7 @@ public class SupervisorMenu
                 "View details of a specific student",
                 "View inactive students",
                 "Book a meeting with a student",
-                "View your meetings",
+                "Manage your meetings",
                 "Update office hours",
                 "View your performance metrics",
                 "Logout"

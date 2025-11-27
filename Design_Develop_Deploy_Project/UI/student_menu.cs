@@ -40,7 +40,7 @@ public class StudentMenu
             "View wellbeing status",
             "Update wellbeing status",
             "Book a meeting with supervisor",
-            "View your meetings",
+            "Manage your meetings",
             "Logout"
         };
 
