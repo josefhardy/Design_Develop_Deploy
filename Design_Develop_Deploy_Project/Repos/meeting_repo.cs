@@ -8,11 +8,20 @@ namespace Design_Develop_Deploy_Project.Repos;
 public class MeetingRepository
 {
 	public string _connectionString { get; set; }
+    private readonly List<Meeting> _testMeetings;
+    private readonly bool _useTestData;
 
     public MeetingRepository(string connectionString)
     {
         _connectionString = connectionString;
+        _useTestData = false;
     }
+    public MeetingRepository(List<Meeting> testMeetings)
+    {
+        _testMeetings = testMeetings;
+        _useTestData = true;
+    }
+
 
 
     public MeetingRepository() { }
@@ -196,6 +205,14 @@ public class MeetingRepository
 
     public List<Meeting> GetMeetingsBySupervisorAndDate(int supervisorId, DateTime date)
     {
+        if (_useTestData)
+        {
+            return _testMeetings
+                .Where(m => m.supervisor_id == supervisorId &&
+                            m.meeting_date.Date == date.Date)
+                .ToList();
+        }
+
         var meetings = new List<Meeting>();
 
         try

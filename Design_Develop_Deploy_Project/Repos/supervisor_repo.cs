@@ -6,10 +6,18 @@ namespace Design_Develop_Deploy_Project.Repos;
 public class SupervisorRepository
 {
     public string _connectionString;
+    private readonly List<Supervisor> _testSupervisors;
+    private readonly bool _useTestData;
 
     public SupervisorRepository(string connectionString)
     {
         _connectionString = connectionString;
+    }
+
+    public SupervisorRepository(List<Supervisor> testSupervisors)
+    {
+        _testSupervisors = testSupervisors;
+        _useTestData = true;
     }
 
     public Supervisor GetSupervisorById(int supervisorId)

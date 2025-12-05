@@ -1,10 +1,10 @@
-﻿
-using Design_Develop_Deploy_Project.Objects;
+﻿using Design_Develop_Deploy_Project.Objects;
 using Design_Develop_Deploy_Project.Repos;
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
 using Design_Develop_Deploy_Project.Utilities;
-using System.Data.SQLite;
 
 namespace Design_Develop_Deploy_Project.Services;
 public class StudentService
@@ -14,10 +14,12 @@ public class StudentService
     private readonly MeetingRepository _meetingRepo;
     private readonly SupervisorRepository _supervisorRepo;
     private readonly Student student;
+    public bool _testMode;
 
-    public StudentService(string connectionString, Student _student)
+    public StudentService(string connectionString, Student _student, bool testMode = false)
     {
         student = _student;
+        _testMode = testMode;
         _studentRepo = new StudentRepository(connectionString);
         _statusRepo = new StatusRepository(connectionString);
         _meetingRepo = new MeetingRepository(connectionString);
@@ -26,14 +28,16 @@ public class StudentService
 
     public void ViewStatus()
     {
-        Console.Clear();
-        Console.WriteLine("======= Student Wellbeing Status =======");
-        Console.WriteLine($"Student: {student.first_name} {student.last_name}");
-        Console.WriteLine($"Current wellbeing score: {student.wellbeing_score}/10");
-        Console.WriteLine($"Last updated: {(student.last_status_update?.ToString("dd MMM yyyy") ?? "No record")}");
-        Console.WriteLine("========================================\n");
-
-        bool choice = ConsoleHelper.GetYesOrNo("Would you like to update your wellbeing score now?");
+        if (!_testMode)
+        {
+            Console.Clear();
+            Console.WriteLine("======= Student Wellbeing Status =======");
+            Console.WriteLine($"Student: {student.first_name} {student.last_name}");
+            Console.WriteLine($"Current wellbeing score: {student.wellbeing_score}/10");
+            Console.WriteLine($"Last updated: {(student.last_status_update?.ToString("dd MMM yyyy") ?? "No record")}");
+            Console.WriteLine("========================================\n");
+        }
+        bool choice = _testMode ? false : ConsoleHelper.GetYesOrNo("Would you like to update your wellbeing score now?");
 
         if (choice)
         {
@@ -45,50 +49,46 @@ public class StudentService
         }
     }
 
-    public void UpdateStatus()
+    public void UpdateStatus(int? testScore = null)
     {
-        Console.Clear();
-        Console.WriteLine("======= Update Wellbeing Status =======");
-        Console.WriteLine($"Student: {student.first_name} {student.last_name}");
-        Console.WriteLine($"Current wellbeing score: {student.wellbeing_score}/10");
-        Console.WriteLine("=======================================\n");
+        int new_score_int = testScore ?? student.wellbeing_score;
 
-        string new_score = ConsoleHelper.AskForInput("Please enter your new wellbeing score (0–10)");
+        // Only call repo if NOT in test mode
+        if (!_testMode)
+        {
+            Console.Clear();
+            Console.WriteLine("======= Update Wellbeing Status =======");
+            Console.WriteLine($"Student: {student.first_name} {student.last_name}");
+            Console.WriteLine($"Current wellbeing score: {student.wellbeing_score}/10");
+            Console.WriteLine("=======================================\n");
 
-        int new_score_int;
-        try
-        {
-            new_score_int = int.Parse(new_score);
-        }
-        catch (FormatException)
-        {
-            ConsoleHelper.WriteInColour("\nInvalid input — score must be a number between 0 and 10.", "Red");
+            string input = testScore.HasValue ? testScore.Value.ToString() : ConsoleHelper.AskForInput("Please enter your new wellbeing score (0–10)");
+            if (!int.TryParse(input, out new_score_int) || new_score_int < 0 || new_score_int > 10)
+            {
+                ConsoleHelper.WriteInColour("\nInvalid score — please enter a number between 0 and 10.", "Red");
+                Thread.Sleep(1500);
+                return;
+            }
+
+            _statusRepo.UpdateStudentWellbeing(student.student_id, new_score_int, student);
+            ConsoleHelper.WriteInColour("\nWellbeing status updated successfully!", "Green");
             Thread.Sleep(1500);
-            return;
         }
 
-        if (new_score_int < 0 || new_score_int > 10)
-        {
-            ConsoleHelper.WriteInColour("\nInvalid score — please enter a number between 0 and 10.", "Red");
-            Thread.Sleep(1500);
-            return;
-        }
-
-        _statusRepo.UpdateStudentWellbeing(student.student_id, new_score_int, student);
+        // Update in-memory student in both test and normal mode
         student.wellbeing_score = new_score_int;
-
-        ConsoleHelper.WriteInColour("\nWellbeing status updated successfully!", "Green");
-        Thread.Sleep(1500);
     }
+
+
+
 
     public void BookMeeting()
     {
-        Console.Clear();
-        var scheduler = new MeetingScheduler(_meetingRepo, _supervisorRepo);
+        if (!_testMode) Console.Clear();
 
+        var scheduler = new MeetingScheduler(_meetingRepo, _supervisorRepo);
         Supervisor supervisor = _supervisorRepo.GetSupervisorById(student.supervisor_id);
 
-        // 1) Build a map: date -> list of slots
         var slotsByDate = new Dictionary<DateTime, List<(DateTime start, DateTime end)>>();
 
         for (int i = 0; i < 14; i++)
@@ -106,29 +106,23 @@ public class StudentService
 
         if (slotsByDate.Count == 0)
         {
-            ConsoleHelper.PrintSection("No Available Slots", "No open slots in the next 2 weeks.", "Yellow");
+            if (!_testMode) ConsoleHelper.PrintSection("No Available Slots", "No open slots in the next 2 weeks.", "Yellow");
             return;
         }
 
-        // 2) Let student choose a day
         var days = slotsByDate.Keys.OrderBy(d => d).ToList();
-        var dayOptions = days
-            .Select(d => d.ToString("ddd dd MMM"))
-            .ToList();
+        var dayOptions = days.Select(d => d.ToString("ddd dd MMM")).ToList();
 
-        int dayChoice = ConsoleHelper.PromptForChoice(dayOptions, "Choose a day with office hours:");
+        int dayChoice = _testMode ? 1 : ConsoleHelper.PromptForChoice(dayOptions, "Choose a day with office hours:");
         var chosenDate = days[dayChoice - 1];
 
-        // 3) Let student choose a 30-min slot on that day
         var daySlots = slotsByDate[chosenDate];
-        var slotOptions = daySlots
-            .Select(s => $"{s.start:HH:mm} – {s.end:HH:mm}")
-            .ToList();
+        var slotOptions = daySlots.Select(s => $"{s.start:HH:mm} – {s.end:HH:mm}").ToList();
 
-        int slotChoice = ConsoleHelper.PromptForChoice(slotOptions, "Choose a meeting slot:");
+        int slotChoice = _testMode ? 1 : ConsoleHelper.PromptForChoice(slotOptions, "Choose a meeting slot:");
         var chosenSlot = daySlots[slotChoice - 1];
 
-        string notes = ConsoleHelper.AskForInput("Add meeting notes (optional)");
+        string notes = _testMode ? "" : ConsoleHelper.AskForInput("Add meeting notes (optional)");
 
         var meeting = new Meeting
         {
@@ -142,95 +136,78 @@ public class StudentService
 
         if (!scheduler.ValidateMeeting(meeting, out string message))
         {
-            ConsoleHelper.PrintSection("Invalid Meeting", message, "Yellow");
+            if (!_testMode) ConsoleHelper.PrintSection("Invalid Meeting", message, "Yellow");
             return;
         }
 
         bool success = _meetingRepo.AddMeeting(meeting);
-        if (success)
+        if (!_testMode)
         {
-            ConsoleHelper.PrintSection("Success",
-                $"Meeting booked for {chosenSlot.start:dddd dd MMM HH:mm} – {chosenSlot.end:HH:mm}", "Green");
+            if (success)
+                ConsoleHelper.PrintSection("Success", $"Meeting booked for {chosenSlot.start:dddd dd MMM HH:mm} – {chosenSlot.end:HH:mm}", "Green");
+            else
+                ConsoleHelper.WriteInColour("Error, failed to book the meeting", "Red");
         }
-        else
-        {
-            ConsoleHelper.WriteInColour("Error, failed to book the meeting", "Red");
-        }
-
     }
 
     public void ViewMeetings()
     {
-        Console.Clear();
+        if (!_testMode) Console.Clear();
+
         Console.WriteLine("=========== View Meetings ===========");
         Console.WriteLine($"Student: {student.first_name} {student.last_name}");
         Console.WriteLine("=======================================\n");
 
-        // 1️⃣ Fetch all meetings for the student
         var meetings = _meetingRepo.GetMeetingsByStudentId(student.student_id);
 
-        // 2️⃣ No meetings?
         if (meetings.Count == 0)
         {
-            ConsoleHelper.WriteInColour("You currently have no meeting booked.\n", "Yellow");
-            bool bookNow = ConsoleHelper.GetYesOrNo("Would you like to book a meeting now?");
-            if (bookNow)
-            {
-                BookMeeting();
-            }
+            if (!_testMode) ConsoleHelper.WriteInColour("You currently have no meeting booked.\n", "Yellow");
+            bool bookNow = _testMode ? false : ConsoleHelper.GetYesOrNo("Would you like to book a meeting now?");
+            if (bookNow) BookMeeting();
             return;
         }
 
         var supervisor = _supervisorRepo.GetSupervisorById(student.supervisor_id);
 
-        // 3️⃣ Show list of meetings
         Console.WriteLine("=========== Your Meetings ===========");
-
         var menuOptions = new List<string>();
         for (int i = 0; i < meetings.Count; i++)
         {
             var m = meetings[i];
-            string option =
-                $"{m.meeting_date:ddd dd MMM} | {m.start_time:hh\\:mm}-{m.end_time:hh\\:mm} | " +
-                $"Notes: {(string.IsNullOrWhiteSpace(m.notes) ? "None" : m.notes)}";
-
+            string option = $"{m.meeting_date:ddd dd MMM} | {m.start_time:hh\\:mm}-{m.end_time:hh\\:mm} | " +
+                            $"Notes: {(string.IsNullOrWhiteSpace(m.notes) ? "None" : m.notes)}";
             menuOptions.Add(option);
             Console.WriteLine($"{i + 1}. {option}");
         }
-
         Console.WriteLine("\n=======================================");
 
-        // 4️⃣ Ask user which meeting to manage
-        int meetingChoice = ConsoleHelper.PromptForChoice(menuOptions, "Select a meeting:");
+        int meetingChoice = _testMode ? 0 : ConsoleHelper.PromptForChoice(menuOptions, "Select a meeting:");
+        var selectedMeeting = meetings[meetingChoice];
 
-        var selectedMeeting = meetings[meetingChoice - 1];
-        Console.Clear();
+        if (!_testMode) Console.Clear();
 
-        // 5️⃣ Meeting actions
-        int action = ConsoleHelper.PromptForChoice(
+        int action = _testMode ? 2 : ConsoleHelper.PromptForChoice(
             new List<string> { "Reschedule meeting", "Cancel meeting", "Return to menu" },
             "What would you like to do?"
         );
 
-        // 6️⃣ Handle actions
         if (action == 1) // Reschedule
         {
-            Console.Clear();
-            Console.WriteLine("=========== Reschedule Meeting ===========");
-            Console.WriteLine($"Your current meeting is on {selectedMeeting.meeting_date:dddd dd MMM} " +
-                              $"from {selectedMeeting.start_time:hh\\:mm} to {selectedMeeting.end_time:hh\\:mm}.");
-            Console.WriteLine("==========================================\n");
+            if (!_testMode) Console.Clear();
+            if (!_testMode) Console.WriteLine("=========== Reschedule Meeting ===========");
+            if (!_testMode) Console.WriteLine($"Your current meeting is on {selectedMeeting.meeting_date:dddd dd MMM} " +
+                                             $"from {selectedMeeting.start_time:hh\\:mm} to {selectedMeeting.end_time:hh\\:mm}.");
+            if (!_testMode) Console.WriteLine("==========================================\n");
 
-            bool confirmReschedule = ConsoleHelper.GetYesOrNo("Would you like to find a new time?");
+            bool confirmReschedule = _testMode ? false : ConsoleHelper.GetYesOrNo("Would you like to find a new time?");
             if (confirmReschedule)
             {
-                Console.WriteLine("\nLet's reschedule your meeting.");
+                if (!_testMode) Console.WriteLine("\nLet's reschedule your meeting.");
                 BookMeeting();
-
-                // Delete OLD meeting after the new one is booked
                 _meetingRepo.DeleteMeeting(selectedMeeting.meeting_id);
             }
-            else
+            else if (!_testMode)
             {
                 ConsoleHelper.WriteInColour("\nReschedule cancelled.", "Green");
                 Thread.Sleep(1500);
@@ -238,17 +215,12 @@ public class StudentService
         }
         else if (action == 2) // Cancel
         {
-            bool confirm = ConsoleHelper.GetYesOrNo("Are you sure you want to cancel this meeting?");
-            if (confirm)
+            bool confirm = _testMode ? true : ConsoleHelper.GetYesOrNo("Are you sure you want to cancel this meeting?");
+            if (confirm) _meetingRepo.DeleteMeeting(selectedMeeting.meeting_id);
+            if (!_testMode)
             {
-                _meetingRepo.DeleteMeeting(selectedMeeting.meeting_id);
-                ConsoleHelper.WriteInColour("\nMeeting cancelled successfully.", "Green");
-            }
-            else
-            {
-                ConsoleHelper.WriteInColour("\nMeeting cancellation aborted.", "Yellow");
+                ConsoleHelper.WriteInColour(confirm ? "\nMeeting cancelled successfully." : "\nMeeting cancellation aborted.", confirm ? "Green" : "Yellow");
             }
         }
     }
-
 }

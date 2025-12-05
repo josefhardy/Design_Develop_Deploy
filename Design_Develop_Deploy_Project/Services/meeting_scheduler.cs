@@ -11,10 +11,28 @@ namespace Design_Develop_Deploy_Project.Services
         private readonly MeetingRepository _meetingRepo;
         private readonly SupervisorRepository _supervisorRepo;
 
+        // ✅ Test mode support
+        private readonly List<Meeting> _testMeetings;
+        private readonly List<Supervisor> _testSupervisors;
+
+        // ✅ Production constructor (uses real repos)
         public MeetingScheduler(MeetingRepository meetingRepo, SupervisorRepository supervisorRepo)
         {
             _meetingRepo = meetingRepo;
             _supervisorRepo = supervisorRepo;
+
+            _testMeetings = null;
+            _testSupervisors = null;
+        }
+
+        // ✅ Test constructor (uses in-memory lists)
+        public MeetingScheduler(List<Meeting> testMeetings, List<Supervisor> testSupervisors)
+        {
+            _meetingRepo = null;
+            _supervisorRepo = null;
+
+            _testMeetings = testMeetings;
+            _testSupervisors = testSupervisors;
         }
 
         public bool ValidateMeeting(Meeting meeting, out string message)
@@ -39,7 +57,11 @@ namespace Design_Develop_Deploy_Project.Services
                 return false;
             }
 
-            var supervisor = _supervisorRepo.GetSupervisorById(meeting.supervisor_id);
+            // ✅ Get supervisor (test mode or production)
+            var supervisor = _testSupervisors != null
+                ? _testSupervisors.Find(s => s.supervisor_id == meeting.supervisor_id)
+                : _supervisorRepo.GetSupervisorById(meeting.supervisor_id);
+
             if (supervisor == null)
             {
                 message = "Supervisor not found.";
@@ -53,7 +75,13 @@ namespace Design_Develop_Deploy_Project.Services
                 return false;
             }
 
-            var sameDayMeetings = _meetingRepo.GetMeetingsBySupervisorAndDate(meeting.supervisor_id, meeting.meeting_date);
+            // ✅ Get same-day meetings (test mode or production)
+            var sameDayMeetings = _testMeetings != null
+                ? _testMeetings.FindAll(m =>
+                    m.supervisor_id == meeting.supervisor_id &&
+                    m.meeting_date.Date == meeting.meeting_date.Date)
+                : _meetingRepo.GetMeetingsBySupervisorAndDate(meeting.supervisor_id, meeting.meeting_date);
+
             foreach (var m in sameDayMeetings)
             {
                 if (meeting.start_time < m.end_time && meeting.end_time > m.start_time)
@@ -66,16 +94,18 @@ namespace Design_Develop_Deploy_Project.Services
             return true;
         }
 
-
         public List<(DateTime, DateTime)> FetchAvailableSlots(int supervisorId, DateTime date)
         {
-            var supervisor = _supervisorRepo.GetSupervisorById(supervisorId);
+            // ✅ Get supervisor (test mode or production)
+            var supervisor = _testSupervisors != null
+                ? _testSupervisors.Find(s => s.supervisor_id == supervisorId)
+                : _supervisorRepo.GetSupervisorById(supervisorId);
+
             if (supervisor == null || string.IsNullOrWhiteSpace(supervisor.office_hours))
                 return new List<(DateTime, DateTime)>();
 
             var officeBlocks = ParseOfficeHours(supervisor.office_hours);
 
-            // Only blocks for this specific day
             var todaysBlocks = officeBlocks
                 .Where(b => b.day == date.DayOfWeek)
                 .ToList();
@@ -83,7 +113,12 @@ namespace Design_Develop_Deploy_Project.Services
             if (!todaysBlocks.Any())
                 return new List<(DateTime, DateTime)>();
 
-            var meetings = _meetingRepo.GetMeetingsBySupervisorAndDate(supervisorId, date);
+            // ✅ Get same-day meetings (test mode or production)
+            var meetings = _testMeetings != null
+                ? _testMeetings.FindAll(m =>
+                    m.supervisor_id == supervisorId &&
+                    m.meeting_date.Date == date.Date)
+                : _meetingRepo.GetMeetingsBySupervisorAndDate(supervisorId, date);
 
             var freeSlots = new List<(DateTime, DateTime)>();
 
@@ -92,46 +127,28 @@ namespace Design_Develop_Deploy_Project.Services
                 DateTime slotStart = date.Date.Add(block.start);
                 DateTime blockEnd = date.Date.Add(block.end);
 
-                // Loop through 30-minute increments
                 while (slotStart < blockEnd)
                 {
                     DateTime slotEnd = slotStart.AddMinutes(30);
+                    if (slotEnd > blockEnd) break;
 
-                    if (slotEnd > blockEnd)
-                        break;
-
-                    // Skip earlier times today
-                    if (slotStart.Date == DateTime.Today && slotStart < DateTime.Now)
-                    {
-                        slotStart = slotStart.AddMinutes(30);
-                        continue;
-                    }
-
-                    // 🔥 FIXED: Proper no-overlap rule (date included)
                     bool conflict = meetings.Any(m =>
                     {
                         DateTime meetingStart = date.Date.Add(m.start_time);
                         DateTime meetingEnd = date.Date.Add(m.end_time);
-
                         return slotStart < meetingEnd && slotEnd > meetingStart;
                     });
 
-                    if (!conflict)
-                        freeSlots.Add((slotStart, slotEnd));
+                    if (!conflict) freeSlots.Add((slotStart, slotEnd));
 
                     slotStart = slotStart.AddMinutes(30);
                 }
             }
 
-            // Keep old behavior exactly the same
-            return freeSlots
-                .OrderBy(s => s.Item1) // Item1 = start time
-                .ToList();
+            return freeSlots.OrderBy(s => s.Item1).ToList();
         }
 
-
-
-
+        // ✅ Private helpers
         private static bool IsWithinOfficeHours(
             DateTime date,
             TimeSpan start,
@@ -140,41 +157,26 @@ namespace Design_Develop_Deploy_Project.Services
         {
             foreach (var range in ranges)
             {
-                if (range.day != date.DayOfWeek)
-                    continue;
-
-                if (start >= range.start && end <= range.end)
-                    return true;
+                if (range.day != date.DayOfWeek) continue;
+                if (start >= range.start && end <= range.end) return true;
             }
-
             return false;
         }
-
 
         private static List<(DayOfWeek day, TimeSpan start, TimeSpan end)> ParseOfficeHours(string officeHours)
         {
             var result = new List<(DayOfWeek day, TimeSpan start, TimeSpan end)>();
-            if (string.IsNullOrWhiteSpace(officeHours))
-                return result;
+            if (string.IsNullOrWhiteSpace(officeHours)) return result;
 
-            // e.g. "Monday 09:00-11:00, Thursday 14:00-16:00"
             var segments = officeHours.Split(',', StringSplitOptions.RemoveEmptyEntries);
-
             foreach (var segment in segments)
             {
-                var trimmed = segment.Trim();
-                // "Monday 09:00-11:00"
-                var parts = trimmed.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                if (parts.Length < 2)
-                    continue;
+                var parts = segment.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length < 2) continue;
 
-                string dayName = parts[0];        // "Monday"
-                string timeRange = parts[^1];     // "09:00-11:00"
+                if (!Enum.TryParse<DayOfWeek>(parts[0], true, out var day)) continue;
 
-                if (!Enum.TryParse<DayOfWeek>(dayName, true, out var day))
-                    continue;
-
-                var times = timeRange.Split('-', StringSplitOptions.RemoveEmptyEntries);
+                var times = parts[^1].Split('-', StringSplitOptions.RemoveEmptyEntries);
                 if (times.Length == 2 &&
                     TimeSpan.TryParse(times[0], out var start) &&
                     TimeSpan.TryParse(times[1], out var end))
@@ -185,8 +187,5 @@ namespace Design_Develop_Deploy_Project.Services
 
             return result;
         }
-
-
-
     }
 }
